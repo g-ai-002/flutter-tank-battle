@@ -21,10 +21,11 @@
 ## 版本历史
 
 ### v0.2.1 (PATCH)
-- **状态**: 开发中 🚧
+- **状态**: 已发布 ✅
 - **目标**: 修复 CI 测试报错
 - **任务**:
   - [x] 修复 AudioService 测试在 CI 环境 MissingPluginException
+  - [x] 修复 Windows 构建 audioplayers_windows MSVC 编译错误
   - [x] 版本号更新至 0.2.1
 
 ### v0.2.0 (MINOR)
