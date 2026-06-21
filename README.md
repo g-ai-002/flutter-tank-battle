@@ -30,6 +30,10 @@
 
 ## 版本历史
 
+### v0.1.2 (2026-06-21)
+- 重构优化：拆分 GamePainter、简化 StorageService、提取 GameOverlay/PowerUpManager
+- 增加 EnemyAI、GameEngine 单元测试
+
 ### v0.1.1 (2026-06-21)
 - 修复 CI 类型检查报错（enemySpawnTimer 类型、clamp 返回值）
 - 修复 StorageService 测试缺少 Flutter binding 初始化

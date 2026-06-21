@@ -20,6 +20,17 @@
 
 ## 版本历史
 
+### v0.1.2 (PATCH)
+- **状态**: 已发布 ✅
+- **目标**: 重构优化存量代码，提升可维护性
+- **任务**:
+  - [x] 拆分 `game_renderer.dart` 中 `_GamePainter` 为独立 `game_painter.dart`
+  - [x] 简化 `StorageService` 单例模式
+  - [x] 从 `game_page.dart` 提取 `GameOverlay` 组件
+  - [x] 从 `game_engine.dart` 提取 `PowerUpManager` 道具管理
+  - [x] 增加 EnemyAI、GameEngine 单元测试
+  - [x] 版本号更新至 0.1.2
+
 ### v0.1.1 (PATCH)
 - **状态**: 已发布 ✅
 - **目标**: 修复 GitHub Actions CI 类型检查报错
