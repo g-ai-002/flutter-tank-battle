@@ -2,10 +2,8 @@ import 'dart:math';
 import '../models/game_enums.dart';
 import '../models/tank.dart';
 import '../models/power_up.dart';
-import '../models/game_map.dart';
 import '../models/game_state.dart';
 import '../utils/constants.dart';
-import 'collision_detector.dart';
 
 class PowerUpManager {
   final Random _random = Random();

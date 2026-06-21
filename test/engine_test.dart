@@ -5,7 +5,6 @@ import 'package:flutter_tank_battle/models/game_map.dart';
 import 'package:flutter_tank_battle/models/game_state.dart';
 import 'package:flutter_tank_battle/engine/enemy_ai.dart';
 import 'package:flutter_tank_battle/engine/game_engine.dart';
-import 'package:flutter_tank_battle/engine/collision_detector.dart';
 import 'package:flutter_tank_battle/utils/constants.dart';
 
 void main() {
