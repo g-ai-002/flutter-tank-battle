@@ -14,6 +14,8 @@ class StorageService {
     return s;
   }
 
+  static StorageService? get instanceSync => _instance;
+
   SharedPreferences get _p {
     final p = _prefs;
     if (p == null) throw StateError('StorageService 尚未初始化');

@@ -5,6 +5,7 @@ import '../models/game_state.dart';
 import '../engine/game_engine.dart';
 import '../services/log_service.dart';
 import '../services/storage_service.dart';
+import '../services/audio_service.dart';
 import '../utils/constants.dart';
 
 class GameProvider extends ChangeNotifier {
@@ -15,6 +16,10 @@ class GameProvider extends ChangeNotifier {
 
   Timer? _gameLoop;
   int _highScore = 0;
+  AudioService? _audio;
+  int _prevEnemiesKilled = 0;
+  int _prevPowerUpCount = 0;
+  bool _endHandled = false;
 
   GameProvider(this._storage) {
     _engine = GameEngine(GameState());
@@ -23,11 +28,20 @@ class GameProvider extends ChangeNotifier {
 
   int get highScore => _highScore;
 
-  void startGame() {
+  Future<void> _initAudio() async {
+    _audio = await AudioService.instance;
+  }
+
+  Future<void> startGame() async {
     LogService.info('开始新游戏');
     _engine = GameEngine(GameState(lives: AppConstants.initialLives));
     _engine.initLevel(1);
     _engine.state.status = GameStatus.playing;
+    _prevEnemiesKilled = 0;
+    _prevPowerUpCount = 0;
+    _endHandled = false;
+    await _initAudio();
+    await _audio?.startBgm();
     _startLoop();
     notifyListeners();
   }
@@ -38,6 +52,9 @@ class GameProvider extends ChangeNotifier {
     _engine.state.lives = _engine.state.lives;
     _engine.initLevel(nextLvl);
     _engine.state.status = GameStatus.playing;
+    _prevEnemiesKilled = 0;
+    _prevPowerUpCount = 0;
+    _endHandled = false;
     _startLoop();
     notifyListeners();
   }
@@ -64,7 +81,11 @@ class GameProvider extends ChangeNotifier {
   }
 
   void playerShoot() {
+    if (_engine.state.status != GameStatus.playing) return;
+    final player = _engine.state.playerTank;
+    if (player == null || player.shootTimer > 0) return;
     _engine.playerShoot();
+    _audio?.playShoot();
     notifyListeners();
   }
 
@@ -79,6 +100,7 @@ class GameProvider extends ChangeNotifier {
         return;
       }
       _engine.update(16.0 / 1000.0);
+      _checkAudioEvents();
       _checkEndConditions();
       notifyListeners();
     });
@@ -89,9 +111,29 @@ class GameProvider extends ChangeNotifier {
     _gameLoop = null;
   }
 
+  void _checkAudioEvents() {
+    final s = _engine.state;
+
+    if (s.enemiesKilled > _prevEnemiesKilled) {
+      _audio?.playExplosion();
+      _prevEnemiesKilled = s.enemiesKilled;
+    }
+
+    final activePowerUps = s.powerUps.where((p) => p.active).length;
+    if (activePowerUps < _prevPowerUpCount) {
+      _audio?.playPowerUp();
+    }
+    _prevPowerUpCount = activePowerUps;
+  }
+
   void _checkEndConditions() {
     final s = _engine.state;
-    if (s.status == GameStatus.gameOver || s.status == GameStatus.victory) {
+    if (s.status == GameStatus.gameOver) {
+      if (!_endHandled) {
+        _endHandled = true;
+        _audio?.stopBgm();
+        _audio?.playGameOver();
+      }
       _stopLoop();
       if (s.score > _highScore) {
         _highScore = s.score;
@@ -99,13 +141,31 @@ class GameProvider extends ChangeNotifier {
       }
     }
     if (s.status == GameStatus.levelComplete) {
+      if (!_endHandled) {
+        _endHandled = true;
+        _audio?.playLevelComplete();
+      }
       _stopLoop();
+    }
+    if (s.status == GameStatus.victory) {
+      if (!_endHandled) {
+        _endHandled = true;
+        _audio?.stopBgm();
+        _audio?.playLevelComplete();
+      }
+      _stopLoop();
+      if (s.score > _highScore) {
+        _highScore = s.score;
+        _storage.setHighScore(_highScore);
+      }
     }
   }
 
   @override
   void dispose() {
     _stopLoop();
+    _audio?.stopBgm();
+    _audio?.dispose();
     super.dispose();
   }
 }

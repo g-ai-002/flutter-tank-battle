@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/audio_service.dart';
 import '../utils/constants.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -29,7 +30,12 @@ class SettingsPage extends StatelessWidget {
             title: const Text('音效'),
             subtitle: const Text('开启/关闭游戏音效'),
             value: settings.soundEnabled,
-            onChanged: (v) => settings.setSoundEnabled(v),
+            onChanged: (v) {
+              settings.setSoundEnabled(v);
+              if (!v) {
+                AudioService.stopBgmGlobal();
+              }
+            },
           ),
           const Divider(height: 1),
           const SizedBox(height: 32),

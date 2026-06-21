@@ -4,7 +4,7 @@ import 'package:flutter_tank_battle/utils/constants.dart';
 void main() {
   test('常量定义正确', () {
     expect(AppConstants.appName, '坦克大战');
-    expect(AppConstants.version, '0.1.2');
+    expect(AppConstants.version, '0.2.0');
     expect(AppConstants.mapCols, 26);
     expect(AppConstants.mapRows, 26);
     expect(AppConstants.tileSize, 24.0);
