@@ -143,6 +143,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Patch audioplayers_windows for MSVC
+        shell: pwsh
+        run: |
+          $pubCache = "$env:LOCALAPPDATA\Pub\Cache"
+          $pluginDir = Get-ChildItem -Path "$pubCache\hosted\pub.dev" -Directory | Where-Object { $_.Name -like 'audioplayers_windows*' } | Select-Object -First 1
+          if ($pluginDir) {
+            $cmakeFile = Join-Path $pluginDir.FullName 'windows\CMakeLists.txt'
+            if (Test-Path $cmakeFile) {
+              $content = Get-Content $cmakeFile -Raw
+              if ($content -notmatch '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS') {
+                $newContent = "add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)`n$content"
+                Set-Content $cmakeFile -Value $newContent
+                Write-Host "Patched: $cmakeFile"
+              }
+            }
+          }
+
       - name: Build Windows
         run: flutter build windows --release
 
