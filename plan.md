@@ -6,9 +6,9 @@
 - 持续可演进：每个版本可独立交付，可观测、可回滚
 
 ## 中期目标
-- [ ] 经典坦克大战核心玩法（移动、射击、碰撞、AI 敌人）
-- [ ] 多关卡地图系统
-- [ ] 道具系统（加速、护盾、火力增强）
+- [x] 经典坦克大战核心玩法（移动、射击、碰撞、AI 敌人）
+- [x] 多关卡地图系统
+- [x] 道具系统（加速、护盾、火力增强）
 - [ ] 音效与背景音乐
 - [ ] 排行榜与成就系统
 - [ ] 自适应布局（折叠屏/平板/桌面）
@@ -21,21 +21,21 @@
 ## 版本历史
 
 ### v0.1.0 (MINOR)
-- **状态**: 开发中 🚧
+- **状态**: 已发布 ✅
 - **目标**: 首个版本：坦克大战最小可用集
 - **任务**:
-  - [ ] 项目脚手架（pubspec/analysis_options/.gitignore）
-  - [ ] Android 平台文件（manifest、build.gradle、签名、minSdk=34/targetSdk=36/compileSdk=36）
-  - [ ] 主题（Material 3 浅/深色、Windows YaHei UI、克制扁平风）
-  - [ ] 数据模型（Tank、Bullet、Map、GameState）
-  - [ ] 服务层：日志、文件系统、存储
-  - [ ] 游戏引擎（移动、射击、碰撞检测、AI 敌人）
-  - [ ] 状态层：GameProvider
-  - [ ] 界面：主页 / 游戏页 / 设置页 + 虚拟手柄
-  - [ ] Canvas 渲染（坦克、子弹、地图、爆炸效果）
-  - [ ] 单元测试
-  - [ ] GitHub Actions：lint + 单测 + Android APK + Windows ZIP + tag 自动 release
-  - [ ] README/plan
+  - [x] 项目脚手架（pubspec/analysis_options/.gitignore）
+  - [x] Android 平台文件（manifest、build.gradle、签名、minSdk=34/targetSdk=36/compileSdk=36）
+  - [x] 主题（Material 3 浅/深色、Windows YaHei UI、克制扁平风）
+  - [x] 数据模型（Tank、Bullet、Map、GameState）
+  - [x] 服务层：日志、文件系统、存储
+  - [x] 游戏引擎（移动、射击、碰撞检测、AI 敌人）
+  - [x] 状态层：GameProvider
+  - [x] 界面：主页 / 游戏页 / 设置页 + 虚拟手柄
+  - [x] Canvas 渲染（坦克、子弹、地图、爆炸效果）
+  - [x] 单元测试
+  - [x] GitHub Actions：lint + 单测 + Android APK + Windows ZIP + tag 自动 release
+  - [x] README/plan
 
 ---
 
