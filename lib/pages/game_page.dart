@@ -6,6 +6,7 @@ import '../models/game_enums.dart';
 import '../providers/game_provider.dart';
 import '../widgets/game_renderer.dart';
 import '../widgets/game_hud.dart';
+import '../widgets/game_overlay.dart';
 import '../widgets/virtual_joystick.dart';
 
 class GamePage extends StatefulWidget {
@@ -134,14 +135,14 @@ class _GamePageState extends State<GamePage> {
               child: Stack(
                 children: [
                   GameRenderer(state: s),
-                  if (s.status == GameStatus.paused) _buildOverlay('游戏暂停', '按 P 键或点击继续', () => game.resumeGame()),
-                  if (s.status == GameStatus.gameOver) _buildOverlay('游戏结束', '得分: ${s.score}', () {
-                    Navigator.pop(context);
-                  }),
-                  if (s.status == GameStatus.levelComplete) _buildOverlay('第 ${s.level} 关通过!', '得分: ${s.score}', () => game.nextLevel()),
-                  if (s.status == GameStatus.victory) _buildOverlay('恭喜通关!', '最终得分: ${s.score}', () {
-                    Navigator.pop(context);
-                  }),
+                  if (s.status == GameStatus.paused)
+                    GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
+                  if (s.status == GameStatus.gameOver)
+                    GameOverlay(title: '游戏结束', subtitle: '得分: ${s.score}', onTap: () => Navigator.pop(context)),
+                  if (s.status == GameStatus.levelComplete)
+                    GameOverlay(title: '第 ${s.level} 关通过!', subtitle: '得分: ${s.score}', onTap: () => game.nextLevel()),
+                  if (s.status == GameStatus.victory)
+                    GameOverlay(title: '恭喜通关!', subtitle: '最终得分: ${s.score}', onTap: () => Navigator.pop(context)),
                 ],
               ),
             ),
@@ -156,29 +157,3 @@ class _GamePageState extends State<GamePage> {
     );
   }
 
-  Widget _buildOverlay(String title, String subtitle, VoidCallback onTap) {
-    return Positioned.fill(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          color: Colors.black54,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(subtitle, style: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 16)),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: onTap,
-                  child: const Text('继续'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
