@@ -16,7 +16,7 @@ class GameState {
   final List<PowerUp> powerUps;
   GameMap map;
   double elapsedTime;
-  int enemySpawnTimer;
+  double enemySpawnTimer;
 
   GameState({
     this.status = GameStatus.idle,
@@ -30,7 +30,7 @@ class GameState {
     List<PowerUp>? powerUps,
     GameMap? map,
     this.elapsedTime = 0.0,
-    this.enemySpawnTimer = 0,
+    this.enemySpawnTimer = 0.0,
   })  : tanks = tanks ?? [],
         bullets = bullets ?? [],
         powerUps = powerUps ?? [],

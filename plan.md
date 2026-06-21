@@ -20,6 +20,14 @@
 
 ## 版本历史
 
+### v0.1.1 (PATCH)
+- **状态**: 开发中 🚧
+- **目标**: 修复 GitHub Actions CI 类型检查报错
+- **任务**:
+  - [x] 修复 `game_engine.dart` 中 `enemySpawnTimer` 类型不匹配（int → double）
+  - [x] 修复 `game_engine.dart` 中 `clamp` 返回值类型转换
+  - [x] 版本号更新至 0.1.1
+
 ### v0.1.0 (MINOR)
 - **状态**: 已发布 ✅
 - **目标**: 首个版本：坦克大战最小可用集

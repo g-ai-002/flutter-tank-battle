@@ -27,7 +27,7 @@ class GameEngine {
     state.enemiesKilled = 0;
     state.bullets.clear();
     state.powerUps.clear();
-    state.enemySpawnTimer = 0;
+    state.enemySpawnTimer = 0.0;
     state.elapsedTime = 0;
     _enemyAIs.clear();
     _powerUpTimer = 0;
@@ -66,7 +66,7 @@ class GameEngine {
     }
 
     for (final tank in state.tanks) {
-      tank.shootTimer = (tank.shootTimer - dt).clamp(0, 999);
+      tank.shootTimer = (tank.shootTimer - dt).clamp(0.0, 999.0).toDouble();
     }
 
     final player = state.playerTank;
