@@ -39,15 +39,14 @@ void main() {
 
     test('AI 坦克移动后位置变化', () {
       final ai = EnemyAI();
-      final enemy = Tank(x: 100, y: 100, type: TankType.enemy, speed: 100);
-      final player = Tank(x: 200, y: 200, type: TankType.player);
-      final map = GameMap.createLevel(1);
+      final map = GameMap(cols: 10, rows: 10);
+      final enemy = Tank(x: 48, y: 48, type: TankType.enemy, speed: 100);
+      final player = Tank(x: 96, y: 96, type: TankType.player);
 
       final oldX = enemy.x;
       final oldY = enemy.y;
       ai.update(enemy, player, map, 1.0);
 
-      // 位置应该变化（移动了）
       expect(enemy.x != oldX || enemy.y != oldY, true);
     });
   });
@@ -98,6 +97,9 @@ void main() {
       engine.initLevel(1);
       engine.state.status = GameStatus.playing;
       final player = engine.state.playerTank!;
+      // 移到空地
+      player.x = 6 * AppConstants.tileSize;
+      player.y = 6 * AppConstants.tileSize;
       final oldY = player.y;
       engine.movePlayer(Direction.up);
       expect(player.y, lessThan(oldY));
