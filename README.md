@@ -28,6 +28,22 @@
 - 拾取道具获得临时增益效果
 - 共 5 关，全部通过即为胜利
 
+## 版本历史
+
+### v0.1.1 (2026-06-21)
+- 修复 CI 类型检查报错（enemySpawnTimer 类型、clamp 返回值）
+- 修复 StorageService 测试缺少 Flutter binding 初始化
+
+### v0.1.0 (2026-06-21)
+- 首个版本：坦克大战最小可用集
+- 经典坦克大战核心玩法（移动、射击、碰撞检测）
+- AI 敌人自动寻路与射击
+- 多关卡地图系统（砖墙、钢铁、水域、基地）
+- 道具系统（护盾、加速、火力增强）
+- Material 3 浅色/深色主题
+- 虚拟手柄 + 键盘操作
+- Android + Windows 双平台
+
 ## 下载
 
 - [GitHub Releases](https://github.com/g-ai-002/flutter-tank-battle/releases)
