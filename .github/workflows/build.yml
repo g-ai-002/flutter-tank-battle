@@ -2,11 +2,11 @@ name: Build and Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
+
+run-name: Build ${{ github.ref_name }}
 
 concurrency:
   group: build-${{ github.sha }}
@@ -14,7 +14,7 @@ concurrency:
 
 env:
   JAVA_VERSION: '21'
-  FLUTTER_VERSION: '3.44.1'
+  FLUTTER_VERSION: '3.47.7'
   APP_NAME: ${{ github.event.repository.name }}
 
 jobs:
@@ -25,17 +25,20 @@ jobs:
       app_version: ${{ steps.version.outputs.jversion }}
       project_name: ${{ steps.project.outputs.project_name }}
     steps:
-      - name: Prepare package version
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Parse version from pubspec
         id: version
         shell: bash
         run: |
-          jversion="0.1.0"
+          jversion=$(grep '^version:' pubspec.yaml | awk '{print $2}')
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             raw_tag="${{ github.ref_name }}"
             version=$(echo "$raw_tag" | sed -E 's/^[vV]//')
             jversion=$(echo "$version" | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/')
             if [ -z "$jversion" ]; then
-              jversion="0.1.0"
+              jversion=$(grep '^version:' pubspec.yaml | awk '{print $2}')
             fi
           fi
           echo "jversion=$jversion" >> $GITHUB_OUTPUT
@@ -120,9 +123,31 @@ jobs:
     name: Build Windows EXE
     permissions:
       contents: read
+    defaults:
+      run:
+        working-directory: C:\w
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Copy project to short path
+        shell: bash
+        working-directory: C:/
+        run: |
+          set -euo pipefail
+          src=$(cygpath -u "$GITHUB_WORKSPACE")
+          rm -rf /c/w
+          mkdir -p /c/w
+          cp -a "$src"/. /c/w/
+          echo "Project copied: $src -> C:\\w"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -132,59 +157,57 @@ jobs:
           cache: true
 
       - name: Print environment info
-        shell: pwsh
         run: |
-          Write-Host "OS: $($env:OS) $($env:PROCESSOR_ARCHITECTURE)"
+          echo "========================================"
+          echo "  Build environment info"
+          echo "========================================"
+          echo "OS: ${RUNNER_OS:-?} / ${PROCESSOR_ARCHITECTURE:-?}"
+          echo "Working directory: $(pwd)"
           flutter --version
-
-      - name: Generate Windows platform files
-        run: flutter create --platforms=windows --project-name ${{ needs.metadata.outputs.project_name }} .
+          dart --version
+          echo "========================================"
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Patch audioplayers_windows for MSVC
-        shell: pwsh
+      - name: Generate Windows platform files
+        run: flutter create --platforms=windows --project-name ${{ needs.metadata.outputs.project_name }} .
+
+      - name: Patch CMakeLists to enable CMP0091 (audioplayers_windows 4.x + VS 2026)
         run: |
-          $pubCache = "$env:LOCALAPPDATA\Pub\Cache"
-          $pluginDir = Get-ChildItem -Path "$pubCache\hosted\pub.dev" -Directory | Where-Object { $_.Name -like 'audioplayers_windows*' } | Select-Object -First 1
-          if ($pluginDir) {
-            $cmakeFile = Join-Path $pluginDir.FullName 'windows\CMakeLists.txt'
-            if (Test-Path $cmakeFile) {
-              $content = Get-Content $cmakeFile -Raw
-              if ($content -notmatch '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS') {
-                $newContent = "add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)`n$content"
-                Set-Content $cmakeFile -Value $newContent
-                Write-Host "Patched: $cmakeFile"
-              }
-            }
-          }
+          sed -i -E 's|^(cmake_minimum_required\(VERSION [0-9.]+\))$|\1\ncmake_policy(SET CMP0091 NEW)|' windows/CMakeLists.txt
+          grep -n 'CMP0091' windows/CMakeLists.txt
 
       - name: Build Windows
         run: flutter build windows --release
 
       - name: List build output
-        shell: pwsh
         run: |
-          $releaseDir = 'build\windows\x64\runner\Release'
-          if (Test-Path $releaseDir) {
-            Get-ChildItem $releaseDir | ForEach-Object {
-              $sizeMB = [math]::Round($_.Length / 1MB, 2)
-              Write-Host "  $($_.Name)  ($sizeMB MB)"
-            }
-            $totalMB = [math]::Round((Get-ChildItem $releaseDir | Measure-Object Length -Sum).Sum / 1MB, 2)
-            Write-Host "  Total: $totalMB MB"
-          } else {
-            Write-Host "Release dir missing"
+          release_dir='build/windows/x64/runner/Release'
+          if [ -d "$release_dir" ]; then
+            total_bytes=0
+            for f in "$release_dir"/*; do
+              if [ -f "$f" ]; then
+                size=$(stat -c%s "$f")
+                size_mb=$(awk "BEGIN{printf \"%.2f\", $size/1048576}")
+                echo "  $(basename "$f")  ($size_mb MB)"
+                total_bytes=$((total_bytes + size))
+              fi
+            done
+            total_mb=$(awk "BEGIN{printf \"%.2f\", $total_bytes/1048576}")
+            echo "  Total: $total_mb MB"
+          else
+            echo "Build output directory not found"
             exit 1
-          }
+          fi
 
       - name: Create Windows ZIP
         shell: pwsh
         run: |
+          Write-Host "Creating ZIP archive..."
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath windows.zip
           $zipSizeMB = [math]::Round((Get-Item windows.zip).Length / 1MB, 2)
-          Write-Host "ZIP size: $zipSizeMB MB"
+          Write-Host "ZIP created: windows.zip ($zipSizeMB MB)"
 
       - name: Rename Windows ZIP
         run: |
@@ -194,7 +217,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.APP_NAME }}-${{ needs.metadata.outputs.app_version }}-windows-x86_64.zip
-          path: ${{ env.APP_NAME }}-${{ needs.metadata.outputs.app_version }}-windows-x86_64.zip
+          path: C:/w/${{ env.APP_NAME }}-${{ needs.metadata.outputs.app_version }}-windows-x86_64.zip
           retention-days: 1
 
   release:
@@ -224,7 +247,7 @@ jobs:
           prev_tag=$(git tag --sort=-version:refname | grep -v "^$current_tag$" | head -1)
           body_content=""
           if [[ -n "$prev_tag" ]]; then
-            body_content=$(git log --pretty=format:"* %s (%h)" "$prev_tag".."$current_tag" -- . ":(exclude)docs" ":(exclude).github")
+            body_content=$(git log --pretty=format:"* %s (%h)" "$prev_tag".."$current_tag" -- . ":(exclude)docs" ":(exclude).github" ":(exclude).gitea")
           else
             body_content="Initial release."
           fi
