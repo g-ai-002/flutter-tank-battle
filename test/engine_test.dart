@@ -208,8 +208,9 @@ void main() {
     test('子弹击中砖墙后消失', () {
       engine.initLevel(1);
       engine.state.status = GameStatus.playing;
-      // 移除敌方坦克，避免敌方子弹干扰子弹计数
+      // 移除敌方坦克并关闭刷新：新生成的敌人会在当帧就开火，其子弹会干扰计数
       engine.state.tanks.removeWhere((t) => t.type == TankType.enemy);
+      engine.state.enemySpawnTimer = 999;
 
       // 在砖墙位置发射子弹
       final player = engine.state.playerTank!;
@@ -218,14 +219,17 @@ void main() {
       player.direction = Direction.down;
 
       engine.playerShoot();
-      final bulletsBefore = engine.state.bullets.length;
+      expect(engine.state.bullets, hasLength(1));
+      final bullet = engine.state.bullets.single;
 
       // 推进足够时间让子弹碰到砖墙
       for (int i = 0; i < 60; i++) {
         engine.update(0.016);
       }
 
-      expect(engine.state.bullets.length, lessThan(bulletsBefore));
+      expect(bullet.active, isFalse);
+      expect(engine.state.bullets, isEmpty);
+      expect(engine.state.map.tileAt(2, 8), TileType.empty);
     });
 
     test('游戏结束条件', () {
