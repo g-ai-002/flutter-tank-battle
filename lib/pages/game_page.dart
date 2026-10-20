@@ -132,18 +132,25 @@ class _GamePageState extends State<GamePage> {
           children: [
             GameHUD(state: s, highScore: game.highScore),
             Expanded(
-              child: Stack(
-                children: [
-                  GameRenderer(state: s),
-                  if (s.status == GameStatus.paused)
-                    GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
-                  if (s.status == GameStatus.gameOver)
-                    GameOverlay(title: '游戏结束', subtitle: '得分: ${s.score}', onTap: () => Navigator.pop(context)),
-                  if (s.status == GameStatus.levelComplete)
-                    GameOverlay(title: '第 ${s.level} 关通过!', subtitle: '得分: ${s.score}', onTap: () => game.nextLevel()),
-                  if (s.status == GameStatus.victory)
-                    GameOverlay(title: '恭喜通关!', subtitle: '最终得分: ${s.score}', onTap: () => Navigator.pop(context)),
-                ],
+              child: GestureDetector(
+                // 点击画布射击（对应操作说明"点击射击"），并夺回键盘焦点
+                onTap: () {
+                  _focusNode.requestFocus();
+                  game.playerShoot();
+                },
+                child: Stack(
+                  children: [
+                    GameRenderer(state: s),
+                    if (s.status == GameStatus.paused)
+                      GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
+                    if (s.status == GameStatus.gameOver)
+                      GameOverlay(title: '游戏结束', subtitle: '得分: ${s.score}', onTap: () => Navigator.pop(context)),
+                    if (s.status == GameStatus.levelComplete)
+                      GameOverlay(title: '第 ${s.level} 关通过!', subtitle: '得分: ${s.score}', onTap: () => game.nextLevel()),
+                    if (s.status == GameStatus.victory)
+                      GameOverlay(title: '恭喜通关!', subtitle: '最终得分: ${s.score}', onTap: () => Navigator.pop(context)),
+                  ],
+                ),
               ),
             ),
             if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux)
