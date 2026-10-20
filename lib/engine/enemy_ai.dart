@@ -47,15 +47,11 @@ class EnemyAI {
     final maxY = (map.rows - 1) * AppConstants.tileSize;
     enemy.x = enemy.x.clamp(AppConstants.tileSize, maxX - AppConstants.tileSize);
     enemy.y = enemy.y.clamp(AppConstants.tileSize, maxY - AppConstants.tileSize);
-
-    // 射击
-    if (_shootTimer <= 0) {
-      _shootTimer = 0.8 + _random.nextDouble() * 1.2;
-    }
   }
 
   bool shouldShoot() {
     if (_shootTimer <= 0) {
+      // 到期只在开火触发时重新计时；若在 update() 末尾提前重置，这里将永远观察不到到期
       _shootTimer = 0.8 + _random.nextDouble() * 1.2;
       return true;
     }

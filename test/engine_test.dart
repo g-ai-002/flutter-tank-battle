@@ -51,6 +51,21 @@ void main() {
 
       expect(enemy.x != oldX || enemy.y != oldY, true);
     });
+
+    test('射击计时到期后 shouldShoot 触发开火', () {
+      final ai = EnemyAI();
+      final map = GameMap(cols: 10, rows: 10);
+      final enemy = Tank(x: 48, y: 48, type: TankType.enemy);
+      final player = Tank(x: 96, y: 96, type: TankType.player);
+
+      var fired = false;
+      // 射击间隔上限 2 秒，模拟 3 秒游戏时间必然到期
+      for (int i = 0; i < 190 && !fired; i++) {
+        ai.update(enemy, player, map, 0.016);
+        fired = ai.shouldShoot();
+      }
+      expect(fired, isTrue);
+    });
   });
 
   group('GameEngine', () {
@@ -169,6 +184,19 @@ void main() {
       expect(engine.state.bullets.length, bulletsAfterFirst);
     });
 
+    test('敌人会发射子弹', () {
+      engine.initLevel(1);
+      engine.state.status = GameStatus.playing;
+
+      var enemyFired = false;
+      // 敌人射击间隔上限 2 秒，模拟 5 秒游戏时间
+      for (int i = 0; i < 320 && !enemyFired; i++) {
+        engine.update(0.016);
+        enemyFired = engine.state.bullets.any((b) => !b.fromPlayer);
+      }
+      expect(enemyFired, isTrue);
+    });
+
     test('update 推进游戏逻辑', () {
       engine.initLevel(1);
       engine.state.status = GameStatus.playing;
@@ -180,6 +208,8 @@ void main() {
     test('子弹击中砖墙后消失', () {
       engine.initLevel(1);
       engine.state.status = GameStatus.playing;
+      // 移除敌方坦克，避免敌方子弹干扰子弹计数
+      engine.state.tanks.removeWhere((t) => t.type == TankType.enemy);
 
       // 在砖墙位置发射子弹
       final player = engine.state.playerTank!;
