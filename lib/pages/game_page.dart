@@ -18,6 +18,7 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   final FocusNode _focusNode = FocusNode();
+  GameProvider? _game;
 
   @override
   void initState() {
@@ -29,33 +30,53 @@ class _GamePageState extends State<GamePage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _game = context.read<GameProvider>();
+  }
+
+  @override
   void dispose() {
+    _game?.stopAllMoving();
     _focusNode.dispose();
     super.dispose();
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final game = context.read<GameProvider>();
-    final s = game.state;
+  static const Map<LogicalKeyboardKey, Direction> _moveKeys = {
+    LogicalKeyboardKey.arrowUp: Direction.up,
+    LogicalKeyboardKey.keyW: Direction.up,
+    LogicalKeyboardKey.arrowDown: Direction.down,
+    LogicalKeyboardKey.keyS: Direction.down,
+    LogicalKeyboardKey.arrowLeft: Direction.left,
+    LogicalKeyboardKey.keyA: Direction.left,
+    LogicalKeyboardKey.arrowRight: Direction.right,
+    LogicalKeyboardKey.keyD: Direction.right,
+  };
 
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    final game = context.read<GameProvider>();
+    final dir = _moveKeys[event.logicalKey];
+
+    if (event is KeyUpEvent) {
+      if (dir == null) return KeyEventResult.ignored;
+      game.stopMoving(dir);
+      return KeyEventResult.handled;
+    }
+
+    // 按住期间由游戏循环按帧推进，系统按键重复事件直接吞掉
+    if (event is KeyRepeatEvent) {
+      return dir == null ? KeyEventResult.ignored : KeyEventResult.handled;
+    }
+
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (dir != null) {
+      game.startMoving(dir);
+      return KeyEventResult.handled;
+    }
+
+    final s = game.state;
     switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowUp:
-      case LogicalKeyboardKey.keyW:
-        game.movePlayer(Direction.up);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowDown:
-      case LogicalKeyboardKey.keyS:
-        game.movePlayer(Direction.down);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowLeft:
-      case LogicalKeyboardKey.keyA:
-        game.movePlayer(Direction.left);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowRight:
-      case LogicalKeyboardKey.keyD:
-        game.movePlayer(Direction.right);
-        return KeyEventResult.handled;
       case LogicalKeyboardKey.space:
         game.playerShoot();
         return KeyEventResult.handled;
@@ -80,6 +101,10 @@ class _GamePageState extends State<GamePage> {
       focusNode: _focusNode,
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
+      // 失焦（切窗口、点到按钮）时清空按住的方向，避免坦克自走
+      onFocusChange: (hasFocus) {
+        if (!hasFocus) game.stopAllMoving();
+      },
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
@@ -155,7 +180,8 @@ class _GamePageState extends State<GamePage> {
             ),
             if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux)
               VirtualJoystick(
-                onMove: (dir) => game.movePlayer(dir),
+                onMoveStart: (dir) => game.startMoving(dir),
+                onMoveEnd: (dir) => game.stopMoving(dir),
                 onShoot: () => game.playerShoot(),
               ),
           ],

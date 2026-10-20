@@ -146,6 +146,55 @@ void main() {
       expect(player.x, lessThan(oldX));
     });
 
+    test('movePlayer 按传入 dt 连续推进', () {
+      engine.initLevel(1);
+      engine.state.status = GameStatus.playing;
+      engine.state.tanks.removeWhere((t) => t.type == TankType.enemy);
+      final player = engine.state.playerTank!;
+      final oldY = player.y;
+
+      // 模拟游戏循环连续 10 帧按住方向键
+      for (int i = 0; i < 10; i++) {
+        engine.movePlayer(Direction.up, 0.016);
+      }
+
+      expect(
+        player.y,
+        closeTo(oldY - AppConstants.tankSpeed * 0.016 * 10, 0.5),
+      );
+    });
+
+    test('换轴移动时对齐到格子', () {
+      engine.initLevel(1);
+      engine.state.status = GameStatus.playing;
+      engine.state.tanks.removeWhere((t) => t.type == TankType.enemy);
+      final player = engine.state.playerTank!;
+      player.direction = Direction.right;
+      player.x = 6 * AppConstants.tileSize + 10;
+
+      engine.movePlayer(Direction.up, 0.016);
+
+      expect(player.x, 6 * AppConstants.tileSize);
+    });
+
+    test('移动被墙体阻挡时不会穿过障碍', () {
+      engine.initLevel(1);
+      engine.state.status = GameStatus.playing;
+      engine.state.tanks.removeWhere((t) => t.type == TankType.enemy);
+      final player = engine.state.playerTank!;
+      // 第 1 关 (2,2) 起有砖墙，贴着墙下方持续向上推
+      player.x = 2 * AppConstants.tileSize;
+      player.y = 3 * AppConstants.tileSize;
+      player.direction = Direction.up;
+
+      for (var i = 0; i < 60; i++) {
+        engine.movePlayer(Direction.up, 0.016);
+      }
+
+      expect(player.y, greaterThanOrEqualTo(3 * AppConstants.tileSize));
+      expect(CollisionDetector.tankHitsTile(player, engine.state.map), isFalse);
+    });
+
     test('玩家死亡重生后出生点位于空地', () {
       engine.initLevel(1);
       engine.state.status = GameStatus.playing;

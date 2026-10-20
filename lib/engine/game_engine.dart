@@ -85,21 +85,29 @@ class GameEngine {
     _checkGameEnd();
   }
 
-  void movePlayer(Direction dir) {
+  void movePlayer(Direction dir, [double? dt]) {
     if (state.status != GameStatus.playing) return;
     final player = state.playerTank;
     if (player == null) return;
 
+    final step = dt ?? 1.0 / AppConstants.gameTickRate;
+    final prevDir = player.direction;
     player.direction = dir;
-    player.move(1.0 / AppConstants.gameTickRate);
+
+    // 换轴时对齐到格子，避免连续移动累积的亚像素偏移导致进不了单格通道
+    if (prevDir != dir) {
+      _alignPlayerToTile(player, dir);
+    }
+
+    player.move(step);
 
     if (CollisionDetector.tankHitsTile(player, state.map)) {
-      player.moveBack(1.0 / AppConstants.gameTickRate);
+      player.moveBack(step);
     }
 
     for (final other in state.tanks) {
       if (other != player && CollisionDetector.tankHitsTank(player, other)) {
-        player.moveBack(1.0 / AppConstants.gameTickRate);
+        player.moveBack(step);
         break;
       }
     }
@@ -116,6 +124,26 @@ class GameEngine {
       }
     }
     state.powerUps.removeWhere((p) => !p.active);
+  }
+
+  void _alignPlayerToTile(Tank player, Direction dir) {
+    final tileSize = AppConstants.tileSize;
+    final isVertical = dir == Direction.up || dir == Direction.down;
+    final targetX = isVertical ? (player.x / tileSize).roundToDouble() * tileSize : player.x;
+    final targetY = isVertical ? player.y : (player.y / tileSize).roundToDouble() * tileSize;
+    if (targetX == player.x && targetY == player.y) return;
+
+    final oldX = player.x;
+    final oldY = player.y;
+    player.x = targetX;
+    player.y = targetY;
+
+    final blocked = CollisionDetector.tankHitsTile(player, state.map) ||
+        state.tanks.any((other) => other != player && CollisionDetector.tankHitsTank(player, other));
+    if (blocked) {
+      player.x = oldX;
+      player.y = oldY;
+    }
   }
 
   void playerShoot() {

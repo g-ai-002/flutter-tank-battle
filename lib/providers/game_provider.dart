@@ -20,6 +20,7 @@ class GameProvider extends ChangeNotifier {
   int _prevEnemiesKilled = 0;
   int _prevPowerUpCount = 0;
   bool _endHandled = false;
+  final List<Direction> _heldDirections = [];
 
   GameProvider(this._storage) {
     _engine = GameEngine(GameState());
@@ -34,6 +35,7 @@ class GameProvider extends ChangeNotifier {
 
   Future<void> startGame() async {
     LogService.info('开始新游戏');
+    _heldDirections.clear();
     _engine = GameEngine(GameState(lives: AppConstants.initialLives));
     _engine.initLevel(1);
     _engine.state.status = GameStatus.playing;
@@ -49,6 +51,7 @@ class GameProvider extends ChangeNotifier {
   void nextLevel() {
     final nextLvl = _engine.state.level + 1;
     LogService.info('进入第 $nextLvl 关');
+    _heldDirections.clear();
     _engine.state.lives = _engine.state.lives;
     _engine.initLevel(nextLvl);
     _engine.state.status = GameStatus.playing;
@@ -62,6 +65,7 @@ class GameProvider extends ChangeNotifier {
   void pauseGame() {
     if (_engine.state.status == GameStatus.playing) {
       _engine.state.status = GameStatus.paused;
+      _heldDirections.clear();
       _stopLoop();
       notifyListeners();
     }
@@ -70,14 +74,23 @@ class GameProvider extends ChangeNotifier {
   void resumeGame() {
     if (_engine.state.status == GameStatus.paused) {
       _engine.state.status = GameStatus.playing;
+      _heldDirections.clear();
       _startLoop();
       notifyListeners();
     }
   }
 
-  void movePlayer(Direction dir) {
-    _engine.movePlayer(dir);
-    notifyListeners();
+  void startMoving(Direction dir) {
+    if (_heldDirections.contains(dir)) return;
+    _heldDirections.add(dir);
+  }
+
+  void stopMoving(Direction dir) {
+    _heldDirections.remove(dir);
+  }
+
+  void stopAllMoving() {
+    _heldDirections.clear();
   }
 
   void playerShoot() {
@@ -92,14 +105,19 @@ class GameProvider extends ChangeNotifier {
   void _startLoop() {
     _stopLoop();
     const tick = Duration(milliseconds: 16);
+    const dt = 16.0 / 1000.0;
     _gameLoop = Timer.periodic(tick, (_) {
       if (_engine.state.status != GameStatus.playing) {
+        _heldDirections.clear();
         _stopLoop();
         _checkEndConditions();
         notifyListeners();
         return;
       }
-      _engine.update(16.0 / 1000.0);
+      if (_heldDirections.isNotEmpty) {
+        _engine.movePlayer(_heldDirections.last, dt);
+      }
+      _engine.update(dt);
       _checkAudioEvents();
       _checkEndConditions();
       notifyListeners();

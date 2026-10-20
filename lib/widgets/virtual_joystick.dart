@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../models/game_enums.dart';
 
 class VirtualJoystick extends StatefulWidget {
-  final void Function(Direction dir) onMove;
+  final void Function(Direction dir) onMoveStart;
+  final void Function(Direction dir) onMoveEnd;
   final VoidCallback onShoot;
 
   const VirtualJoystick({
     super.key,
-    required this.onMove,
+    required this.onMoveStart,
+    required this.onMoveEnd,
     required this.onShoot,
   });
 
@@ -17,6 +19,20 @@ class VirtualJoystick extends StatefulWidget {
 
 class _VirtualJoystickState extends State<VirtualJoystick> {
   Direction? _currentDir;
+
+  void _release(Direction dir) {
+    if (_currentDir == dir) {
+      setState(() => _currentDir = null);
+    }
+    widget.onMoveEnd(dir);
+  }
+
+  @override
+  void dispose() {
+    final dir = _currentDir;
+    if (dir != null) widget.onMoveEnd(dir);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,13 +88,13 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
     return GestureDetector(
       onTapDown: (_) {
         setState(() => _currentDir = dir);
-        widget.onMove(dir);
+        widget.onMoveStart(dir);
       },
       onTapUp: (_) {
-        setState(() => _currentDir = null);
+        _release(dir);
       },
       onTapCancel: () {
-        setState(() => _currentDir = null);
+        _release(dir);
       },
       child: Container(
         width: 44,
