@@ -42,7 +42,7 @@ class _GamePageState extends State<GamePage> {
     super.dispose();
   }
 
-  static const Map<LogicalKeyboardKey, Direction> _moveKeys = {
+  static final Map<LogicalKeyboardKey, Direction> _moveKeys = {
     LogicalKeyboardKey.arrowUp: Direction.up,
     LogicalKeyboardKey.keyW: Direction.up,
     LogicalKeyboardKey.arrowDown: Direction.down,

@@ -127,7 +127,7 @@ class GameEngine {
   }
 
   void _alignPlayerToTile(Tank player, Direction dir) {
-    final tileSize = AppConstants.tileSize;
+    const tileSize = AppConstants.tileSize;
     final isVertical = dir == Direction.up || dir == Direction.down;
     final targetX = isVertical ? (player.x / tileSize).roundToDouble() * tileSize : player.x;
     final targetY = isVertical ? player.y : (player.y / tileSize).roundToDouble() * tileSize;
