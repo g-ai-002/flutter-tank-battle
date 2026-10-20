@@ -73,7 +73,7 @@ flutter run
 
 ## 技术栈
 
-- Flutter 3.44.1
+- Flutter 3.47.7
 - Provider 状态管理
 - Material 3 设计系统
 - CustomPainter 游戏渲染
