@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_tank_battle/models/game_enums.dart';
 import 'package:flutter_tank_battle/models/tank.dart';
+import 'package:flutter_tank_battle/models/bullet.dart';
 import 'package:flutter_tank_battle/models/game_map.dart';
 import 'package:flutter_tank_battle/models/game_state.dart';
 import 'package:flutter_tank_battle/engine/enemy_ai.dart';
 import 'package:flutter_tank_battle/engine/game_engine.dart';
+import 'package:flutter_tank_battle/engine/collision_detector.dart';
 import 'package:flutter_tank_battle/utils/constants.dart';
 
 void main() {
@@ -103,6 +105,51 @@ void main() {
       final oldY = player.y;
       engine.movePlayer(Direction.up);
       expect(player.y, lessThan(oldY));
+    });
+
+    test('玩家出生点在所有关卡都位于空地', () {
+      for (var level = 1; level <= AppConstants.maxLevels; level++) {
+        engine.initLevel(level);
+        final player = engine.state.playerTank!;
+        expect(
+          CollisionDetector.tankHitsTile(player, engine.state.map),
+          isFalse,
+          reason: '第 $level 关出生点与实心格子重叠',
+        );
+      }
+    });
+
+    test('玩家可以从出生点自由移动', () {
+      engine.initLevel(1);
+      engine.state.status = GameStatus.playing;
+      final player = engine.state.playerTank!;
+      final oldX = player.x;
+      final oldY = player.y;
+      engine.movePlayer(Direction.up);
+      expect(player.y, lessThan(oldY));
+      engine.movePlayer(Direction.left);
+      expect(player.x, lessThan(oldX));
+    });
+
+    test('玩家死亡重生后出生点位于空地', () {
+      engine.initLevel(1);
+      engine.state.status = GameStatus.playing;
+      final player = engine.state.playerTank!;
+      player.lives = 1;
+      engine.state.bullets.add(Bullet(
+        x: player.x,
+        y: player.y + 10,
+        direction: Direction.up,
+        fromPlayer: false,
+      ));
+      engine.update(0.016);
+
+      final respawned = engine.state.playerTank!;
+      expect(respawned, isNot(same(player)));
+      expect(
+        CollisionDetector.tankHitsTile(respawned, engine.state.map),
+        isFalse,
+      );
     });
 
     test('playerShoot 发射子弹', () {

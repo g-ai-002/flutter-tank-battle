@@ -20,6 +20,10 @@ class AppConstants {
   // 射击冷却时间（秒）
   static const double shootCooldown = 0.5;
 
+  // 玩家出生点（基地左侧空地，不能落在实心格子上）
+  static const int playerSpawnCol = 8;
+  static const int playerSpawnRow = 24;
+
   // 玩家初始生命数
   static const int initialLives = 3;
 

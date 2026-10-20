@@ -30,8 +30,8 @@ class GameEngine {
     _powerUpManager.reset();
 
     final player = Tank(
-      x: 12 * AppConstants.tileSize,
-      y: 24 * AppConstants.tileSize,
+      x: AppConstants.playerSpawnCol * AppConstants.tileSize,
+      y: AppConstants.playerSpawnRow * AppConstants.tileSize,
       direction: Direction.up,
       type: TankType.player,
       lives: state.lives,
@@ -239,8 +239,8 @@ class GameEngine {
       state.tanks.remove(existing);
     }
     final player = Tank(
-      x: 12 * AppConstants.tileSize,
-      y: 24 * AppConstants.tileSize,
+      x: AppConstants.playerSpawnCol * AppConstants.tileSize,
+      y: AppConstants.playerSpawnRow * AppConstants.tileSize,
       direction: Direction.up,
       type: TankType.player,
       lives: 1,
