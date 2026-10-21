@@ -13,7 +13,7 @@ VirtualJoystick _buildJoystick({
   );
 }
 
-// 触控区铺满 body：测试视口默认 800x600，空闲锚点即区域中心 (400, 300)
+// 触控区铺满 body：测试视口默认 800x600，空闲锚点在左下角 (91, 509)
 Widget _wrapJoystick(VirtualJoystick joystick) {
   return MaterialApp(home: Scaffold(body: joystick));
 }
@@ -79,7 +79,7 @@ void main() {
     expect(ended, [Direction.right, Direction.down]);
   });
 
-  testWidgets('手指按下处成为底座中心,抬起后回到区域中心锚点', (tester) async {
+  testWidgets('手指按下处成为底座中心,抬起后回到左下角锚点', (tester) async {
     await tester.pumpWidget(_wrapJoystick(_buildJoystick()));
 
     const press = Offset(200, 150);
@@ -91,7 +91,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.getCenter(find.byKey(const Key('joystick_base'))),
-      const Offset(400, 300),
+      const Offset(91, 509),
     );
   });
 

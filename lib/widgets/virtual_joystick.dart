@@ -5,7 +5,7 @@ import '../models/game_enums.dart';
 ///
 /// 铺满父级给定的触控区（游戏页为左下区域），手指按下的位置
 /// 即底座中心（钳制在触控区内），提升跟手体验；空闲时底座停在
-/// 区域中心锚点并变淡，松手后也滑回锚点。
+/// 左下角锚点并变淡，松手后也滑回锚点。
 ///
 /// 摇杆把手相对底座中心的偏移量化为上下左右四个方向，
 /// 拖动过程中不松手即可切换方向；通过 [onMoveStart]/[onMoveEnd]
@@ -35,12 +35,14 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
   static const double _idleOpacity = 0.4;
   // 松手后底座滑回锚点并变淡的时长；按下时零延迟瞬移跟手
   static const Duration _settleDuration = Duration(milliseconds: 150);
+  // 空闲锚点距左、下边缘的边距，与右下射击按钮的边距一致
+  static const double _anchorMargin = 16;
 
   static const Key _baseKey = Key('joystick_base');
 
   // 触控区尺寸，build 时写入，供按下时把底座中心钳制在区域内
   Size _zoneSize = Size.zero;
-  // 底座中心（触控区坐标系）；null 表示空闲，底座停在区域中心锚点
+  // 底座中心（触控区坐标系）；null 表示空闲，底座停在左下角锚点
   Offset? _baseCenter;
   Offset _stickOffset = Offset.zero;
   Direction? _currentDir;
@@ -71,6 +73,16 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
     return Offset(
       position.dx.clamp(radius, size.width - radius).toDouble(),
       position.dy.clamp(radius, size.height - radius).toDouble(),
+    );
+  }
+
+  /// 空闲时底座停在左下角（内缩一圈边距），与右下射击按钮齐平
+  Offset _anchorCenter() {
+    return _clampToZone(
+      Offset(
+        _anchorMargin + _baseSize / 2,
+        _zoneSize.height - _anchorMargin - _baseSize / 2,
+      ),
     );
   }
 
@@ -112,7 +124,7 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
       builder: (context, constraints) {
         _zoneSize = constraints.biggest;
         final active = _baseCenter != null;
-        final base = _baseCenter ?? _zoneSize.center(Offset.zero);
+        final base = _baseCenter ?? _anchorCenter();
         return Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (event) {
