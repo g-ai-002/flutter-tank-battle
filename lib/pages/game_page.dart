@@ -131,89 +131,98 @@ class _GamePageState extends State<GamePage> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1A1A1A),
-          title: const Text('坦克大战', style: TextStyle(color: Colors.white)),
-          iconTheme: const IconThemeData(color: Colors.white),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              game.pauseGame();
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('退出游戏'),
-                  content: const Text('确定要退出当前游戏吗？'),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        game.resumeGame();
-                      },
-                      child: const Text('继续游戏'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        Navigator.pop(context);
-                      },
-                      child: const Text('退出'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(s.status == GameStatus.paused ? Icons.play_arrow : Icons.pause),
-              onPressed: () {
-                if (s.status == GameStatus.playing) {
-                  game.pauseGame();
-                } else if (s.status == GameStatus.paused) {
-                  game.resumeGame();
-                }
-              },
-            ),
-          ],
-        ),
-        body: Column(
+        // 顶部导航栏与信息栏会占用上下方向的画布空间，改为
+        // 由 GameHUD 悬挂在两侧上方，画布铺满全屏
+        body: Stack(
           children: [
-            GameHUD(state: s, highScore: game.highScore),
-            Expanded(
-              child: GestureDetector(
-                // 点击画布射击（对应操作说明"点击射击"），并夺回键盘焦点
-                onTap: () {
-                  _focusNode.requestFocus();
-                  game.playerShoot();
-                },
-                child: Stack(
-                  children: [
-                    GameRenderer(state: s),
-                    // 摇杆与射击按钮悬浮在画布上：横屏全屏时地图才能占满可用高度
-                    if (_isMobile)
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: VirtualJoystick(
-                          onMoveStart: (dir) => game.startMoving(dir),
-                          onMoveEnd: (dir) => game.stopMoving(dir),
-                          onShoot: () => game.playerShoot(),
-                        ),
-                      ),
-                    if (s.status == GameStatus.paused)
-                      GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
-                    if (s.status == GameStatus.gameOver)
-                      GameOverlay(title: '游戏结束', subtitle: '得分: ${s.score}', onTap: () => Navigator.pop(context)),
-                    if (s.status == GameStatus.levelComplete)
-                      GameOverlay(title: '第 ${s.level} 关通过!', subtitle: '得分: ${s.score}', onTap: () => game.nextLevel()),
-                    if (s.status == GameStatus.victory)
-                      GameOverlay(title: '恭喜通关!', subtitle: '最终得分: ${s.score}', onTap: () => Navigator.pop(context)),
-                  ],
+            // 点击画布射击（对应操作说明"点击射击"），并夺回键盘焦点
+            GestureDetector(
+              onTap: () {
+                _focusNode.requestFocus();
+                game.playerShoot();
+              },
+              child: GameRenderer(state: s),
+            ),
+            // 摇杆与射击按钮悬浮在画布上
+            if (_isMobile)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: VirtualJoystick(
+                  onMoveStart: (dir) => game.startMoving(dir),
+                  onMoveEnd: (dir) => game.stopMoving(dir),
+                  onShoot: () => game.playerShoot(),
                 ),
+              ),
+            if (s.status == GameStatus.paused)
+              GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
+            if (s.status == GameStatus.gameOver)
+              GameOverlay(title: '游戏结束', subtitle: '得分: ${s.score}', onTap: () => Navigator.pop(context)),
+            if (s.status == GameStatus.levelComplete)
+              GameOverlay(title: '第 ${s.level} 关通过!', subtitle: '得分: ${s.score}', onTap: () => game.nextLevel()),
+            if (s.status == GameStatus.victory)
+              GameOverlay(title: '恭喜通关!', subtitle: '最终得分: ${s.score}', onTap: () => Navigator.pop(context)),
+            GameHUD(
+              state: s,
+              highScore: game.highScore,
+              leading: _circleNavButton(Icons.arrow_back, () => _confirmExit(game)),
+              trailing: _circleNavButton(
+                s.status == GameStatus.paused ? Icons.play_arrow : Icons.pause,
+                () => _togglePause(game),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmExit(GameProvider game) {
+    game.pauseGame();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('退出游戏'),
+        content: const Text('确定要退出当前游戏吗？'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              game.resumeGame();
+            },
+            child: const Text('继续游戏'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            child: const Text('退出'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _togglePause(GameProvider game) {
+    final status = game.state.status;
+    if (status == GameStatus.playing) {
+      game.pauseGame();
+    } else if (status == GameStatus.paused) {
+      game.resumeGame();
+    }
+  }
+
+  /// 半透明圆形悬浮按钮，风格与摇杆底座一致
+  Widget _circleNavButton(IconData icon, VoidCallback onPressed) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.white, size: 22),
+        onPressed: onPressed,
       ),
     );
   }
