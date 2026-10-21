@@ -6,17 +6,22 @@ import 'package:flutter_tank_battle/widgets/virtual_joystick.dart';
 VirtualJoystick _buildJoystick({
   void Function(Direction dir)? onMoveStart,
   void Function(Direction dir)? onMoveEnd,
-  VoidCallback? onShoot,
 }) {
   return VirtualJoystick(
     onMoveStart: onMoveStart ?? (_) {},
     onMoveEnd: onMoveEnd ?? (_) {},
-    onShoot: onShoot ?? () {},
   );
 }
 
-Widget _wrap(VirtualJoystick joystick) {
+// 触控区铺满 body：测试视口默认 800x600，空闲锚点即区域中心 (400, 300)
+Widget _wrapJoystick(VirtualJoystick joystick) {
   return MaterialApp(home: Scaffold(body: joystick));
+}
+
+Widget _wrapShootButton(VoidCallback onShoot) {
+  return MaterialApp(
+    home: Scaffold(body: Center(child: ShootButton(onShoot: onShoot))),
+  );
 }
 
 void main() {
@@ -24,7 +29,7 @@ void main() {
     final started = <Direction>[];
     final ended = <Direction>[];
     await tester.pumpWidget(
-      _wrap(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
+      _wrapJoystick(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
     );
 
     final base = tester.getCenter(find.byKey(const Key('joystick_base')));
@@ -42,7 +47,7 @@ void main() {
     final started = <Direction>[];
     final ended = <Direction>[];
     await tester.pumpWidget(
-      _wrap(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
+      _wrapJoystick(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
     );
 
     final base = tester.getCenter(find.byKey(const Key('joystick_base')));
@@ -74,32 +79,53 @@ void main() {
     expect(ended, [Direction.right, Direction.down]);
   });
 
-  testWidgets('按在底座边缘立即触发方向,抬起后停止', (tester) async {
+  testWidgets('手指按下处成为底座中心,抬起后回到区域中心锚点', (tester) async {
+    await tester.pumpWidget(_wrapJoystick(_buildJoystick()));
+
+    const press = Offset(200, 150);
+    final gesture = await tester.startGesture(press);
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(find.byKey(const Key('joystick_base'))), press);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(
+      tester.getCenter(find.byKey(const Key('joystick_base'))),
+      const Offset(400, 300),
+    );
+  });
+
+  testWidgets('按在触控区边缘,底座钳制在区域内且立即触发方向', (tester) async {
     final started = <Direction>[];
     final ended = <Direction>[];
     await tester.pumpWidget(
-      _wrap(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
+      _wrapJoystick(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
     );
 
-    final base = tester.getCenter(find.byKey(const Key('joystick_base')));
-    final gesture = await tester.startGesture(base.translate(60, 0));
-    await tester.pump();
-    expect(started, [Direction.right]);
+    // 按在左下角:底座中心钳制到 (75, 525),把手朝手指方向贴边 → 向左
+    final gesture = await tester.startGesture(const Offset(10, 560));
+    await tester.pumpAndSettle();
+    expect(started, [Direction.left]);
+    expect(
+      tester.getCenter(find.byKey(const Key('joystick_base'))),
+      const Offset(75, 525),
+    );
 
     await gesture.up();
-    await tester.pump();
-    expect(ended, [Direction.right]);
+    await tester.pumpAndSettle();
+    expect(ended, [Direction.left]);
   });
 
   testWidgets('组件销毁时释放按住的方向', (tester) async {
     final started = <Direction>[];
     final ended = <Direction>[];
     await tester.pumpWidget(
-      _wrap(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
+      _wrapJoystick(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
     );
 
-    final base = tester.getCenter(find.byKey(const Key('joystick_base')));
-    final gesture = await tester.startGesture(base.translate(0, -60));
+    final anchor = tester.getCenter(find.byKey(const Key('joystick_base')));
+    final gesture = await tester.startGesture(anchor);
+    await gesture.moveBy(const Offset(0, -60));
     await tester.pump();
     expect(started, [Direction.up]);
 
@@ -114,11 +140,12 @@ void main() {
     final started = <Direction>[];
     final ended = <Direction>[];
     await tester.pumpWidget(
-      _wrap(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
+      _wrapJoystick(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
     );
 
-    final base = tester.getCenter(find.byKey(const Key('joystick_base')));
-    final gesture = await tester.startGesture(base.translate(0, -60));
+    final anchor = tester.getCenter(find.byKey(const Key('joystick_base')));
+    final gesture = await tester.startGesture(anchor);
+    await gesture.moveBy(const Offset(0, -60));
     await tester.pump();
     expect(started, [Direction.up]);
 
@@ -134,30 +161,24 @@ void main() {
 
   testWidgets('点击射击按钮触发射击回调', (tester) async {
     var shots = 0;
-    await tester.pumpWidget(
-      _wrap(_buildJoystick(onShoot: () => shots++)),
-    );
+    await tester.pumpWidget(_wrapShootButton(() => shots++));
 
     await tester.tap(find.byKey(const Key('shoot_button')));
     await tester.pump();
     expect(shots, 1);
   });
 
-  testWidgets('射击按钮为 96x96,圆心与摇杆底座圆心同高', (tester) async {
-    await tester.pumpWidget(_wrap(_buildJoystick()));
+  testWidgets('射击按钮为 96x96', (tester) async {
+    await tester.pumpWidget(_wrapShootButton(() {}));
 
     final button = tester.getSize(find.byKey(const Key('shoot_button')));
     expect(button.width, 96);
     expect(button.height, 96);
-
-    final baseCenter = tester.getCenter(find.byKey(const Key('joystick_base')));
-    final shootCenter = tester.getCenter(find.byKey(const Key('shoot_button')));
-    expect(shootCenter.dy, moreOrLessEquals(baseCenter.dy, epsilon: 0.01));
   });
 
   testWidgets('按下射击按钮缩放反馈,抬起恢复并触发射击', (tester) async {
     var shots = 0;
-    await tester.pumpWidget(_wrap(_buildJoystick(onShoot: () => shots++)));
+    await tester.pumpWidget(_wrapShootButton(() => shots++));
 
     double scaleOf() =>
         tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale;

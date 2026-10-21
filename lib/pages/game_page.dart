@@ -9,7 +9,7 @@ import '../widgets/game_hud.dart';
 import '../widgets/game_overlay.dart';
 import '../widgets/virtual_joystick.dart';
 
-/// 桌面端用键盘操控；移动端显示虚拟摇杆，并锁定横屏沉浸全屏游玩。
+/// 桌面端用键盘操控；移动端左下区域为动态摇杆触控区，锁定横屏沉浸全屏游玩。
 bool get _isMobile =>
     !Platform.isWindows && !Platform.isMacOS && !Platform.isLinux;
 
@@ -120,6 +120,7 @@ class _GamePageState extends State<GamePage> {
   Widget build(BuildContext context) {
     final game = context.watch<GameProvider>();
     final s = game.state;
+    final size = MediaQuery.sizeOf(context);
 
     return Focus(
       focusNode: _focusNode,
@@ -143,16 +144,28 @@ class _GamePageState extends State<GamePage> {
               },
               child: GameRenderer(state: s),
             ),
-            // 摇杆与射击按钮悬浮在画布上
-            if (_isMobile)
+            // 左下区域为动态摇杆触控区：手指按下处即底座中心；
+            // 射击按钮独立固定在右下角
+            if (_isMobile) ...[
               Align(
-                alignment: Alignment.bottomCenter,
-                child: VirtualJoystick(
-                  onMoveStart: (dir) => game.startMoving(dir),
-                  onMoveEnd: (dir) => game.stopMoving(dir),
-                  onShoot: () => game.playerShoot(),
+                alignment: Alignment.bottomLeft,
+                child: SizedBox(
+                  width: size.width * 0.5,
+                  height: size.height * 0.55,
+                  child: VirtualJoystick(
+                    onMoveStart: (dir) => game.startMoving(dir),
+                    onMoveEnd: (dir) => game.stopMoving(dir),
+                  ),
                 ),
               ),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: ShootButton(onShoot: () => game.playerShoot()),
+                ),
+              ),
+            ],
             if (s.status == GameStatus.paused)
               GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
             if (s.status == GameStatus.gameOver)
