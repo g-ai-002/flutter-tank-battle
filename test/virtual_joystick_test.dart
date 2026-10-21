@@ -142,4 +142,16 @@ void main() {
     await tester.pump();
     expect(shots, 1);
   });
+
+  testWidgets('射击按钮为 96x96,圆心与摇杆底座圆心同高', (tester) async {
+    await tester.pumpWidget(_wrap(_buildJoystick()));
+
+    final button = tester.getSize(find.byKey(const Key('shoot_button')));
+    expect(button.width, 96);
+    expect(button.height, 96);
+
+    final baseCenter = tester.getCenter(find.byKey(const Key('joystick_base')));
+    final shootCenter = tester.getCenter(find.byKey(const Key('shoot_button')));
+    expect(shootCenter.dy, moreOrLessEquals(baseCenter.dy, epsilon: 0.01));
+  });
 }

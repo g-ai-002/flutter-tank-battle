@@ -25,6 +25,7 @@ class VirtualJoystick extends StatefulWidget {
 class _VirtualJoystickState extends State<VirtualJoystick> {
   static const double _baseSize = 150;
   static const double _knobSize = 56;
+  static const double _shootButtonSize = 96;
   // 摇杆头中心到底座中心的最大距离（贴边时）
   static const double _maxOffset = (_baseSize - _knobSize) / 2;
   // 偏移小于死区视为回中，避免误触发
@@ -85,7 +86,8 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
       padding: const EdgeInsets.all(16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        // 射击按钮圆心与摇杆底座圆心同高
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _buildJoystick(),
           _buildShootButton(),
@@ -203,8 +205,8 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
       key: _shootKey,
       onTap: widget.onShoot,
       child: Container(
-        width: 64,
-        height: 64,
+        width: _shootButtonSize,
+        height: _shootButtonSize,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           color: Color(0xFFE53935),
@@ -214,7 +216,7 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
             '射击',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),

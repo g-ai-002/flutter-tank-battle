@@ -9,6 +9,10 @@ import '../widgets/game_hud.dart';
 import '../widgets/game_overlay.dart';
 import '../widgets/virtual_joystick.dart';
 
+/// 桌面端用键盘操控；移动端显示虚拟摇杆，并锁定横屏沉浸全屏游玩。
+bool get _isMobile =>
+    !Platform.isWindows && !Platform.isMacOS && !Platform.isLinux;
+
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
 
@@ -23,6 +27,14 @@ class _GamePageState extends State<GamePage> {
   @override
   void initState() {
     super.initState();
+    if (_isMobile) {
+      // 游玩页固定横屏并进入沉浸全屏（隐藏系统栏），菜单页仍跟随系统方向
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<GameProvider>().startGame();
       _focusNode.requestFocus();
@@ -38,6 +50,18 @@ class _GamePageState extends State<GamePage> {
   @override
   void dispose() {
     _game?.stopAllMoving();
+    if (_isMobile) {
+      // 恢复 main.dart 中的应用级方向偏好与可见的系统栏
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+        DeviceOrientation.portraitUp,
+      ]);
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+    }
     _focusNode.dispose();
     super.dispose();
   }
@@ -166,6 +190,16 @@ class _GamePageState extends State<GamePage> {
                 child: Stack(
                   children: [
                     GameRenderer(state: s),
+                    // 摇杆与射击按钮悬浮在画布上：横屏全屏时地图才能占满可用高度
+                    if (_isMobile)
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: VirtualJoystick(
+                          onMoveStart: (dir) => game.startMoving(dir),
+                          onMoveEnd: (dir) => game.stopMoving(dir),
+                          onShoot: () => game.playerShoot(),
+                        ),
+                      ),
                     if (s.status == GameStatus.paused)
                       GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
                     if (s.status == GameStatus.gameOver)
@@ -178,12 +212,6 @@ class _GamePageState extends State<GamePage> {
                 ),
               ),
             ),
-            if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux)
-              VirtualJoystick(
-                onMoveStart: (dir) => game.startMoving(dir),
-                onMoveEnd: (dir) => game.stopMoving(dir),
-                onShoot: () => game.playerShoot(),
-              ),
           ],
         ),
       ),
