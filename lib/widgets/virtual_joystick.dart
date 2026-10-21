@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/game_enums.dart';
 
+/// 虚拟摇杆 + 射击按钮。
+///
+/// 摇杆把手相对底座中心的偏移量化为上下左右四个方向，
+/// 拖动过程中不松手即可切换方向；通过 [onMoveStart]/[onMoveEnd]
+/// 与键盘共用同一套移动状态机。
 class VirtualJoystick extends StatefulWidget {
   final void Function(Direction dir) onMoveStart;
   final void Function(Direction dir) onMoveEnd;
@@ -18,20 +23,55 @@ class VirtualJoystick extends StatefulWidget {
 }
 
 class _VirtualJoystickState extends State<VirtualJoystick> {
-  Direction? _currentDir;
+  static const double _baseSize = 150;
+  static const double _knobSize = 56;
+  // 摇杆头中心到底座中心的最大距离（贴边时）
+  static const double _maxOffset = (_baseSize - _knobSize) / 2;
+  // 偏移小于死区视为回中，避免误触发
+  static const double _deadZone = _maxOffset * 0.3;
 
-  void _release(Direction dir) {
-    if (_currentDir == dir) {
-      setState(() => _currentDir = null);
-    }
-    widget.onMoveEnd(dir);
-  }
+  static const Key _baseKey = Key('joystick_base');
+  static const Key _shootKey = Key('shoot_button');
+
+  Offset _stickOffset = Offset.zero;
+  Direction? _currentDir;
+  int? _activePointer;
 
   @override
   void dispose() {
     final dir = _currentDir;
     if (dir != null) widget.onMoveEnd(dir);
     super.dispose();
+  }
+
+  void _applyDirection(Direction? newDir) {
+    if (newDir == _currentDir) return;
+    final old = _currentDir;
+    setState(() => _currentDir = newDir);
+    if (old != null) widget.onMoveEnd(old);
+    if (newDir != null) widget.onMoveStart(newDir);
+  }
+
+  void _updateStick(Offset localPosition) {
+    var delta = localPosition - Offset(_baseSize / 2, _baseSize / 2);
+    if (delta.distance > _maxOffset) {
+      delta = Offset.fromDirection(delta.direction, _maxOffset);
+    }
+    setState(() => _stickOffset = delta);
+    _applyDirection(_directionFor(delta));
+  }
+
+  Direction? _directionFor(Offset delta) {
+    if (delta.distance < _deadZone) return null;
+    return delta.dx.abs() > delta.dy.abs()
+        ? (delta.dx > 0 ? Direction.right : Direction.left)
+        : (delta.dy > 0 ? Direction.down : Direction.up);
+  }
+
+  void _release() {
+    _activePointer = null;
+    setState(() => _stickOffset = Offset.zero);
+    _applyDirection(null);
   }
 
   @override
@@ -42,75 +82,120 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // 方向键
-          _buildDPad(),
-          // 射击按钮
+          _buildJoystick(),
           _buildShootButton(),
         ],
       ),
     );
   }
 
-  Widget _buildDPad() {
+  Widget _buildJoystick() {
     return SizedBox(
-      width: 140,
-      height: 140,
+      width: _baseSize,
+      height: _baseSize,
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (event) {
+          if (_activePointer != null) return;
+          _activePointer = event.pointer;
+          _updateStick(event.localPosition);
+        },
+        onPointerMove: (event) {
+          if (event.pointer == _activePointer) _updateStick(event.localPosition);
+        },
+        onPointerUp: (event) {
+          if (event.pointer == _activePointer) _release();
+        },
+        onPointerCancel: (event) {
+          if (event.pointer == _activePointer) _release();
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            _buildBase(),
+            AnimatedAlign(
+              duration: const Duration(milliseconds: 120),
+              alignment: Alignment(
+                _stickOffset.dx / _maxOffset,
+                _stickOffset.dy / _maxOffset,
+              ),
+              child: _buildKnob(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBase() {
+    return Container(
+      key: _baseKey,
+      width: _baseSize,
+      height: _baseSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // 上
-          Positioned(
-            top: 0,
-            child: _dPadButton(Direction.up, Icons.keyboard_arrow_up),
-          ),
-          // 下
-          Positioned(
-            bottom: 0,
-            child: _dPadButton(Direction.down, Icons.keyboard_arrow_down),
-          ),
-          // 左
-          Positioned(
-            left: 0,
-            child: _dPadButton(Direction.left, Icons.keyboard_arrow_left),
-          ),
-          // 右
-          Positioned(
-            right: 0,
-            child: _dPadButton(Direction.right, Icons.keyboard_arrow_right),
-          ),
+          Positioned(top: 10, child: _arrow(Direction.up)),
+          Positioned(bottom: 10, child: _arrow(Direction.down)),
+          Positioned(left: 10, child: _arrow(Direction.left)),
+          Positioned(right: 10, child: _arrow(Direction.right)),
         ],
       ),
     );
   }
 
-  Widget _dPadButton(Direction dir, IconData icon) {
-    final isActive = _currentDir == dir;
-    return GestureDetector(
-      onTapDown: (_) {
-        setState(() => _currentDir = dir);
-        widget.onMoveStart(dir);
-      },
-      onTapUp: (_) {
-        _release(dir);
-      },
-      onTapCancel: () {
-        _release(dir);
-      },
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+  Widget _arrow(Direction dir) {
+    final active = _currentDir == dir;
+    final icon = switch (dir) {
+      Direction.up => Icons.keyboard_arrow_up,
+      Direction.down => Icons.keyboard_arrow_down,
+      Direction.left => Icons.keyboard_arrow_left,
+      Direction.right => Icons.keyboard_arrow_right,
+    };
+    return Icon(
+      icon,
+      size: 18,
+      color: Colors.white.withValues(alpha: active ? 0.9 : 0.35),
+    );
+  }
+
+  Widget _buildKnob() {
+    final active = _currentDir != null;
+    return Container(
+      width: _knobSize,
+      height: _knobSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: active ? 0.35 : 0.2),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+          width: 1,
         ),
-        child: Icon(icon, color: Colors.white, size: 28),
+      ),
+      child: Center(
+        child: Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.6),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildShootButton() {
     return GestureDetector(
+      key: _shootKey,
       onTap: widget.onShoot,
       child: Container(
         width: 64,
@@ -122,7 +207,11 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
         child: const Center(
           child: Text(
             '射击',
-            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
