@@ -37,6 +37,7 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
   Offset _stickOffset = Offset.zero;
   Direction? _currentDir;
   int? _activePointer;
+  bool _shootPressed = false;
 
   @override
   void dispose() {
@@ -203,21 +204,30 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
   Widget _buildShootButton() {
     return GestureDetector(
       key: _shootKey,
+      // 按压动效：按下时按钮缩小并变亮，让点击反馈可见
+      onTapDown: (_) => setState(() => _shootPressed = true),
+      onTapUp: (_) => setState(() => _shootPressed = false),
+      onTapCancel: () => setState(() => _shootPressed = false),
       onTap: widget.onShoot,
-      child: Container(
-        width: _shootButtonSize,
-        height: _shootButtonSize,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFFE53935),
-        ),
-        child: const Center(
-          child: Text(
-            '射击',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+      child: AnimatedScale(
+        scale: _shootPressed ? 0.85 : 1.0,
+        duration: const Duration(milliseconds: 80),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          width: _shootButtonSize,
+          height: _shootButtonSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _shootPressed ? const Color(0xFFFF6E40) : const Color(0xFFE53935),
+          ),
+          child: const Center(
+            child: Text(
+              '射击',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),

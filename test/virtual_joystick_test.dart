@@ -154,4 +154,24 @@ void main() {
     final shootCenter = tester.getCenter(find.byKey(const Key('shoot_button')));
     expect(shootCenter.dy, moreOrLessEquals(baseCenter.dy, epsilon: 0.01));
   });
+
+  testWidgets('按下射击按钮缩放反馈,抬起恢复并触发射击', (tester) async {
+    var shots = 0;
+    await tester.pumpWidget(_wrap(_buildJoystick(onShoot: () => shots++)));
+
+    double scaleOf() =>
+        tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale;
+    expect(scaleOf(), 1.0);
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('shoot_button'))),
+    );
+    await tester.pump();
+    expect(scaleOf(), 0.85);
+
+    await gesture.up();
+    await tester.pump();
+    expect(scaleOf(), 1.0);
+    expect(shots, 1);
+  });
 }
