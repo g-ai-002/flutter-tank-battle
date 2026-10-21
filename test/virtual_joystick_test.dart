@@ -110,6 +110,28 @@ void main() {
     await gesture.up();
   });
 
+  testWidgets('组件销毁后迟到的移动/抬起事件不触发回调', (tester) async {
+    final started = <Direction>[];
+    final ended = <Direction>[];
+    await tester.pumpWidget(
+      _wrap(_buildJoystick(onMoveStart: started.add, onMoveEnd: ended.add)),
+    );
+
+    final base = tester.getCenter(find.byKey(const Key('joystick_base')));
+    final gesture = await tester.startGesture(base.translate(0, -60));
+    await tester.pump();
+    expect(started, [Direction.up]);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    expect(ended, [Direction.up]);
+
+    // 销毁后到达的移动/抬起事件沿旧命中链派发，应被静默忽略
+    await gesture.moveBy(const Offset(0, -60));
+    await gesture.up();
+    expect(started, [Direction.up]);
+    expect(ended, [Direction.up]);
+  });
+
   testWidgets('点击射击按钮触发射击回调', (tester) async {
     var shots = 0;
     await tester.pumpWidget(

@@ -53,6 +53,9 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
   }
 
   void _updateStick(Offset localPosition) {
+    // up/move/cancel 事件沿指针按下时缓存的命中链派发，组件在按住
+    // 期间被销毁后事件仍会送达，此时不得再 setState 或触发回调
+    if (!mounted) return;
     var delta = localPosition - Offset(_baseSize / 2, _baseSize / 2);
     if (delta.distance > _maxOffset) {
       delta = Offset.fromDirection(delta.direction, _maxOffset);
@@ -69,6 +72,8 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
   }
 
   void _release() {
+    // 同 _updateStick：销毁后迟到的抬起/取消事件直接忽略
+    if (!mounted) return;
     _activePointer = null;
     setState(() => _stickOffset = Offset.zero);
     _applyDirection(null);
