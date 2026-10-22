@@ -37,7 +37,7 @@ Future<void> main() async {
   await LogService.init(logRoot: FileSystemService.instance.getLogRoot);
   LogService.info('应用启动: ${AppConstants.appName} v${AppConstants.version}');
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUIOverlayStyle(
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
     statusBarBrightness: Brightness.light,
