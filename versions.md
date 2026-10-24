@@ -27,7 +27,7 @@
 | 应用内版本号 (`lib/utils/constants.dart`) | 0.4.1                              |
 | Flutter SDK（CI 固定版本）                | 3.47.7                             |
 | Dart SDK 约束                             | >=3.13.5 <4.0.0                    |
-| compileSdk / targetSdk                    | 37 / 37                            |
+| compileSdk / targetSdk                    | 37.2 / 37                          |
 | minSdk                                    | 35                                 |
 | NDK                                       | 30.0.16248370                      |
 | Java (source/target)                      | 21                                 |
@@ -41,6 +41,7 @@
 
 | 组件                                      | 当前版本  | MAJOR 最新版本       | MINOR 最新版本       | PATCH 最新版本       | 引用文件       | 说明                     | 类型         |
 |-------------------------------------------|-----------|----------------------|----------------------|----------------------|----------------|--------------------------|--------------|
+| Flame (`flame`)                           | `1.38.2`  | `1.38.2` (已是最新)  | `1.38.2` (已是最新)  | `1.38.2` (已是最新)  | `pubspec.yaml` | 游戏引擎                 | dependencies |
 | Provider (`provider`)                     | `6.1.5+1` | `6.1.5+1` (已是最新) | `6.1.5+1` (已是最新) | `6.1.5+1` (已是最新) | `pubspec.yaml` | 状态管理                 | dependencies |
 | Shared Preferences (`shared_preferences`) | `2.5.6`   | `2.5.6` (已是最新)   | `2.5.6` (已是最新)   | `2.5.6` (已是最新)   | `pubspec.yaml` | 键值本地存储             | dependencies |
 | Path Provider (`path_provider`)           | `2.1.6`   | `2.1.6` (已是最新)   | `2.1.6` (已是最新)   | `2.1.6` (已是最新)   | `pubspec.yaml` | 平台目录定位             | dependencies |
