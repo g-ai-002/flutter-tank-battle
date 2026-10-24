@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/game_enums.dart';
 import '../models/game_state.dart';
@@ -14,7 +13,7 @@ class GameProvider extends ChangeNotifier {
   GameState get state => _engine.state;
   GameEngine get engine => _engine;
 
-  Timer? _gameLoop;
+  double _accumulator = 0;
   int _highScore = 0;
   AudioService? _audio;
   int _prevEnemiesKilled = 0;
@@ -36,6 +35,7 @@ class GameProvider extends ChangeNotifier {
   Future<void> startGame() async {
     LogService.info('开始新游戏');
     _heldDirections.clear();
+    _accumulator = 0;
     _engine = GameEngine(GameState(lives: AppConstants.initialLives));
     _engine.initLevel(1);
     _engine.state.status = GameStatus.playing;
@@ -44,7 +44,6 @@ class GameProvider extends ChangeNotifier {
     _endHandled = false;
     await _initAudio();
     await _audio?.startBgm();
-    _startLoop();
     notifyListeners();
   }
 
@@ -52,13 +51,13 @@ class GameProvider extends ChangeNotifier {
     final nextLvl = _engine.state.level + 1;
     LogService.info('进入第 $nextLvl 关');
     _heldDirections.clear();
+    _accumulator = 0;
     _engine.state.lives = _engine.state.lives;
     _engine.initLevel(nextLvl);
     _engine.state.status = GameStatus.playing;
     _prevEnemiesKilled = 0;
     _prevPowerUpCount = 0;
     _endHandled = false;
-    _startLoop();
     notifyListeners();
   }
 
@@ -66,7 +65,6 @@ class GameProvider extends ChangeNotifier {
     if (_engine.state.status == GameStatus.playing) {
       _engine.state.status = GameStatus.paused;
       _heldDirections.clear();
-      _stopLoop();
       notifyListeners();
     }
   }
@@ -75,7 +73,7 @@ class GameProvider extends ChangeNotifier {
     if (_engine.state.status == GameStatus.paused) {
       _engine.state.status = GameStatus.playing;
       _heldDirections.clear();
-      _startLoop();
+      _accumulator = 0;
       notifyListeners();
     }
   }
@@ -102,31 +100,42 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _startLoop() {
-    _stopLoop();
-    const tick = Duration(milliseconds: 16);
-    const dt = 16.0 / 1000.0;
-    _gameLoop = Timer.periodic(tick, (_) {
-      if (_engine.state.status != GameStatus.playing) {
-        _heldDirections.clear();
-        _stopLoop();
-        _checkEndConditions();
-        notifyListeners();
-        return;
-      }
+  /// 由 Flame 的游戏循环每帧调用，替代原来的 16ms Timer。
+  ///
+  /// 使用固定 1/60 秒步长推进物理，保证不同刷新率下手感一致。
+  void advance(double dt) {
+    if (_engine.state.status != GameStatus.playing) {
+      _heldDirections.clear();
+      _checkEndConditions();
+      return;
+    }
+
+    _accumulator += dt;
+    const step = 1.0 / AppConstants.gameTickRate;
+    var steps = 0;
+    while (_accumulator >= step && steps < 4) {
+      _accumulator -= step;
+      steps++;
       if (_heldDirections.isNotEmpty) {
-        _engine.movePlayer(_heldDirections.last, dt);
+        _engine.movePlayer(_heldDirections.last, step);
       }
-      _engine.update(dt);
+      _engine.update(step);
       _checkAudioEvents();
       _checkEndConditions();
-      notifyListeners();
-    });
-  }
-
-  void _stopLoop() {
-    _gameLoop?.cancel();
-    _gameLoop = null;
+      if (_engine.state.status != GameStatus.playing) {
+        break;
+      }
+    }
+    if (steps == 0) {
+      return;
+    }
+    if (steps >= 4) {
+      _accumulator = 0;
+    }
+    if (_engine.state.status != GameStatus.playing) {
+      _heldDirections.clear();
+    }
+    notifyListeners();
   }
 
   void _checkAudioEvents() {
@@ -152,7 +161,6 @@ class GameProvider extends ChangeNotifier {
         _audio?.stopBgm();
         _audio?.playGameOver();
       }
-      _stopLoop();
       if (s.score > _highScore) {
         _highScore = s.score;
         _storage.setHighScore(_highScore);
@@ -163,7 +171,6 @@ class GameProvider extends ChangeNotifier {
         _endHandled = true;
         _audio?.playLevelComplete();
       }
-      _stopLoop();
     }
     if (s.status == GameStatus.victory) {
       if (!_endHandled) {
@@ -171,7 +178,6 @@ class GameProvider extends ChangeNotifier {
         _audio?.stopBgm();
         _audio?.playLevelComplete();
       }
-      _stopLoop();
       if (s.score > _highScore) {
         _highScore = s.score;
         _storage.setHighScore(_highScore);
@@ -181,7 +187,6 @@ class GameProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _stopLoop();
     _audio?.stopBgm();
     _audio?.dispose();
     super.dispose();

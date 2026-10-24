@@ -1,10 +1,11 @@
 import 'dart:io';
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../game/tank_game.dart';
 import '../models/game_enums.dart';
 import '../providers/game_provider.dart';
-import '../widgets/game_renderer.dart';
 import '../widgets/game_hud.dart';
 import '../widgets/game_overlay.dart';
 import '../widgets/virtual_joystick.dart';
@@ -23,6 +24,7 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   final FocusNode _focusNode = FocusNode();
   GameProvider? _game;
+  TankGame? _flame;
 
   @override
   void initState() {
@@ -44,7 +46,12 @@ class _GamePageState extends State<GamePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _game = context.read<GameProvider>();
+    final game = context.read<GameProvider>();
+    _game = game;
+    _flame ??= TankGame(
+      provider: game,
+      onCanvasTap: () => _focusNode.requestFocus(),
+    );
   }
 
   @override
@@ -136,13 +143,11 @@ class _GamePageState extends State<GamePage> {
         // 由 GameHUD 悬挂在两侧上方，画布铺满全屏
         body: Stack(
           children: [
-            // 点击画布射击（对应操作说明"点击射击"），并夺回键盘焦点
-            GestureDetector(
-              onTap: () {
-                _focusNode.requestFocus();
-                game.playerShoot();
-              },
-              child: GameRenderer(state: s),
+            // 点击画布射击由 Flame 的 TapCallbacks 处理，并夺回键盘焦点
+            Positioned.fill(
+              child: _flame == null
+                  ? const SizedBox.expand()
+                  : GameWidget<TankGame>(game: _flame!),
             ),
             // 左下区域为动态摇杆触控区：手指按下处即底座中心；
             // 射击按钮独立固定在右下角
@@ -167,19 +172,40 @@ class _GamePageState extends State<GamePage> {
               ),
             ],
             if (s.status == GameStatus.paused)
-              GameOverlay(title: '游戏暂停', subtitle: '按 P 键或点击继续', onTap: () => game.resumeGame()),
+              GameOverlay(
+                title: '游戏暂停',
+                subtitle: '按 P 键或点击继续',
+                onTap: () => game.resumeGame(),
+              ),
             if (s.status == GameStatus.gameOver)
-              GameOverlay(title: '游戏结束', subtitle: '得分: ${s.score}', onTap: () => Navigator.pop(context)),
+              GameOverlay(
+                title: '游戏结束',
+                subtitle: '得分: ${s.score}',
+                onTap: () => Navigator.pop(context),
+              ),
             if (s.status == GameStatus.levelComplete)
-              GameOverlay(title: '第 ${s.level} 关通过!', subtitle: '得分: ${s.score}', onTap: () => game.nextLevel()),
+              GameOverlay(
+                title: '第 ${s.level} 关通过!',
+                subtitle: '得分: ${s.score}',
+                onTap: () => game.nextLevel(),
+              ),
             if (s.status == GameStatus.victory)
-              GameOverlay(title: '恭喜通关!', subtitle: '最终得分: ${s.score}', onTap: () => Navigator.pop(context)),
+              GameOverlay(
+                title: '恭喜通关!',
+                subtitle: '最终得分: ${s.score}',
+                onTap: () => Navigator.pop(context),
+              ),
             GameHUD(
               state: s,
               highScore: game.highScore,
-              leading: _circleNavButton(Icons.arrow_back, () => _confirmExit(game)),
+              leading: _circleNavButton(
+                Icons.arrow_back,
+                () => _confirmExit(game),
+              ),
               trailing: _circleNavButton(
-                s.status == GameStatus.paused ? Icons.play_arrow : Icons.pause,
+                s.status == GameStatus.paused
+                    ? Icons.play_arrow
+                    : Icons.pause,
                 () => _togglePause(game),
               ),
             ),
