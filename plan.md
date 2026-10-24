@@ -20,6 +20,19 @@
 
 ## 版本历史
 
+### v0.4.0 (MINOR) — 当前开发中
+- **状态**: 开发完成（待 CI 验证）
+- **目标**: 将战场渲染与主循环迁移到 Flame 引擎
+- **任务**:
+  - [x] 引入 Flame 1.38.2，战场改为固定分辨率 World + CameraComponent
+  - [x] 地形/单位/特效拆为 `BattlefieldComponent`、`UnitLayerComponent`、`EffectLayerComponent`
+  - [x] 16ms Timer 主循环改为 `FlameGame.update` 驱动，固定 1/60 步长推进物理
+  - [x] 点击射击迁移到 Flame `TapCallbacks`，爆炸/炮口闪光与相机抖动由组件承担
+  - [x] 游戏页改用 `GameWidget` 承载，保留键盘、摇杆与射击按钮
+  - [x] 删除不再使用的 `GamePainter`/`GameRenderer`
+  - [x] 版本号 0.3.4 → 0.4.0
+  - [x] 更新 README/plan/versions
+
 ### v0.2.2 (PATCH)
 - **状态**: 开发中 🚧
 - **目标**: 重构优化工程配置，升级构建链与 CI 流水线
@@ -95,9 +108,12 @@
 - **包体克制**：当前依赖均为成熟稳定的纯 Dart / Flutter 插件，避免引入大型原生 SDK。
 
 ## 依赖与版本基线
-- Flutter: 3.44.1
+- Flutter: 3.47.7
+- Dart: 3.13.5
+- flame: 1.38.2
 - provider: 6.1.5+1
-- window_manager: 0.5.1
-- shared_preferences: 2.5.5
-- path_provider: 2.1.5
+- window_manager: 0.5.2
+- shared_preferences: 2.5.6
+- path_provider: 2.1.6
 - path: 1.9.1
+- audioplayers: 6.8.1
