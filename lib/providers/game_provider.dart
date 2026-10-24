@@ -14,6 +14,8 @@ class GameProvider extends ChangeNotifier {
   GameEngine get engine => _engine;
 
   double _accumulator = 0;
+  double _notifyAccumulator = 0;
+  GameStatus _lastNotifiedStatus = GameStatus.idle;
   int _highScore = 0;
   AudioService? _audio;
   int _prevEnemiesKilled = 0;
@@ -104,9 +106,14 @@ class GameProvider extends ChangeNotifier {
   ///
   /// 使用固定 1/60 秒步长推进物理，保证不同刷新率下手感一致。
   void advance(double dt) {
-    if (_engine.state.status != GameStatus.playing) {
+    final status = _engine.state.status;
+    if (status != GameStatus.playing) {
       _heldDirections.clear();
       _checkEndConditions();
+      if (status != _lastNotifiedStatus) {
+        _lastNotifiedStatus = status;
+        notifyListeners();
+      }
       return;
     }
 
@@ -135,7 +142,15 @@ class GameProvider extends ChangeNotifier {
     if (_engine.state.status != GameStatus.playing) {
       _heldDirections.clear();
     }
-    notifyListeners();
+
+    // HUD 只需约 10Hz 的刷新；比赛画面由 Flame 每帧自绘，不受影响。
+    _notifyAccumulator += dt;
+    final after = _engine.state.status;
+    if (after != _lastNotifiedStatus || _notifyAccumulator >= 0.1) {
+      _lastNotifiedStatus = after;
+      _notifyAccumulator = 0;
+      notifyListeners();
+    }
   }
 
   void _checkAudioEvents() {
