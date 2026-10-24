@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flame/input.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/game_enums.dart';
 import '../models/game_state.dart';
@@ -11,17 +13,22 @@ import '../providers/game_provider.dart';
 import '../utils/constants.dart';
 import 'components/battlefield_component.dart';
 import 'components/effect_layer_component.dart';
+import 'components/joystick_components.dart';
 import 'components/unit_layer_component.dart';
 import 'tank_world.dart';
 
 /// 基于 Flame 的坦克大战。
 ///
-/// 战场、单位与爆炸由组件渲染，16ms Timer 主循环改为
-/// [FlameGame.update] 驱动；规则仍由 [GameProvider] 持有。
-class TankGame extends FlameGame<TankWorld> {
+/// 战场、单位、爆炸、键盘/摇杆输入与游戏内浮层都由 Flame 承担；
+/// 规则仍由 [GameProvider] 持有。
+class TankGame extends FlameGame<TankWorld> with KeyboardEvents {
   TankGame({
     required this.provider,
     required this.onCanvasTap,
+    required this.isMobile,
+    required this.onResume,
+    required this.onExit,
+    required this.onNextLevel,
   }) : super(
           world: TankWorld(),
           camera: CameraComponent.withFixedResolution(
@@ -33,10 +40,31 @@ class TankGame extends FlameGame<TankWorld> {
   static const double worldSize =
       AppConstants.mapCols * AppConstants.tileSize;
 
+  static const String pauseOverlayId = 'tankPause';
+  static const String gameOverOverlayId = 'tankGameOver';
+  static const String levelCompleteOverlayId = 'tankLevelComplete';
+  static const String victoryOverlayId = 'tankVictory';
+
+  static final Map<LogicalKeyboardKey, Direction> _moveKeys = {
+    LogicalKeyboardKey.arrowUp: Direction.up,
+    LogicalKeyboardKey.keyW: Direction.up,
+    LogicalKeyboardKey.arrowDown: Direction.down,
+    LogicalKeyboardKey.keyS: Direction.down,
+    LogicalKeyboardKey.arrowLeft: Direction.left,
+    LogicalKeyboardKey.keyA: Direction.left,
+    LogicalKeyboardKey.arrowRight: Direction.right,
+    LogicalKeyboardKey.keyD: Direction.right,
+  };
+
   final GameProvider provider;
   final VoidCallback onCanvasTap;
+  final bool isMobile;
+  final VoidCallback onResume;
+  final VoidCallback onExit;
+  final VoidCallback onNextLevel;
 
   final math.Random _random = math.Random();
+  final Set<String> _activeOverlays = {};
 
   late final EffectLayerComponent _effects;
   late final Vector2 _cameraBase;
@@ -64,8 +92,66 @@ class TankGame extends FlameGame<TankWorld> {
         priority: 10,
       ),
     ]);
+    if (isMobile) {
+      await camera.viewport.add(
+        JoystickInputComponent(provider: provider, priority: 20),
+      );
+      await camera.viewport.add(
+        ShootButtonComponent(
+          onShoot: () {
+            onCanvasTap();
+            provider.playerShoot();
+          },
+          priority: 21,
+        ),
+      );
+    }
     camera.viewfinder.position = _cameraBase;
     camera.viewfinder.zoom = 1;
+  }
+
+  @override
+  KeyEventResult onKeyEvent(
+    KeyEvent event,
+    Set<LogicalKeyboardKey> keysPressed,
+  ) {
+    final direction = _moveKeys[event.logicalKey];
+
+    if (event is KeyUpEvent) {
+      if (direction == null) {
+        return KeyEventResult.ignored;
+      }
+      provider.stopMoving(direction);
+      return KeyEventResult.handled;
+    }
+
+    if (event is KeyRepeatEvent) {
+      return direction == null ? KeyEventResult.ignored : KeyEventResult.handled;
+    }
+
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    if (direction != null) {
+      provider.startMoving(direction);
+      return KeyEventResult.handled;
+    }
+
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.space:
+        provider.playerShoot();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.keyP:
+        if (provider.state.status == GameStatus.playing) {
+          provider.pauseGame();
+        } else if (provider.state.status == GameStatus.paused) {
+          provider.resumeGame();
+        }
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
+    }
   }
 
   @override
@@ -98,8 +184,26 @@ class TankGame extends FlameGame<TankWorld> {
       _shake(0.5, 9);
     }
 
+    _syncOverlays(after.status);
     _updateCamera(dt);
     super.update(dt);
+  }
+
+  void _syncOverlays(GameStatus status) {
+    _sync(pauseOverlayId, status == GameStatus.paused, 100);
+    _sync(gameOverOverlayId, status == GameStatus.gameOver, 90);
+    _sync(levelCompleteOverlayId, status == GameStatus.levelComplete, 90);
+    _sync(victoryOverlayId, status == GameStatus.victory, 90);
+  }
+
+  void _sync(String id, bool visible, int priority) {
+    if (visible && !_activeOverlays.contains(id)) {
+      overlays.add(id, priority: priority);
+      _activeOverlays.add(id);
+    } else if (!visible && _activeOverlays.contains(id)) {
+      overlays.remove(id);
+      _activeOverlays.remove(id);
+    }
   }
 
   void _shake(double duration, double strength) {

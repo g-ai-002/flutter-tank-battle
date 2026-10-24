@@ -3,14 +3,14 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../game/overlays/tank_overlays.dart';
 import '../game/tank_game.dart';
 import '../models/game_enums.dart';
 import '../providers/game_provider.dart';
 import '../widgets/game_hud.dart';
-import '../widgets/game_overlay.dart';
-import '../widgets/virtual_joystick.dart';
 
-/// 桌面端用键盘操控；移动端左下区域为动态摇杆触控区，锁定横屏沉浸全屏游玩。
+/// 桌面端用键盘操控；移动端左下摇杆与右下射击按钮由 Flame 绘制。
+/// 游玩页锁定横屏并进入沉浸全屏，菜单页仍跟随系统方向。
 bool get _isMobile =>
     !Platform.isWindows && !Platform.isMacOS && !Platform.isLinux;
 
@@ -30,7 +30,6 @@ class _GamePageState extends State<GamePage> {
   void initState() {
     super.initState();
     if (_isMobile) {
-      // 游玩页固定横屏并进入沉浸全屏（隐藏系统栏），菜单页仍跟随系统方向
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -50,7 +49,14 @@ class _GamePageState extends State<GamePage> {
     _game = game;
     _flame ??= TankGame(
       provider: game,
-      onCanvasTap: () => _focusNode.requestFocus(),
+      onCanvasTap: _focusGame,
+      isMobile: _isMobile,
+      onResume: () {
+        game.resumeGame();
+        _focusGame();
+      },
+      onExit: () => Navigator.pop(context),
+      onNextLevel: game.nextLevel,
     );
   }
 
@@ -58,7 +64,6 @@ class _GamePageState extends State<GamePage> {
   void dispose() {
     _game?.stopAllMoving();
     if (_isMobile) {
-      // 恢复 main.dart 中的应用级方向偏好与可见的系统栏
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -73,53 +78,9 @@ class _GamePageState extends State<GamePage> {
     super.dispose();
   }
 
-  static final Map<LogicalKeyboardKey, Direction> _moveKeys = {
-    LogicalKeyboardKey.arrowUp: Direction.up,
-    LogicalKeyboardKey.keyW: Direction.up,
-    LogicalKeyboardKey.arrowDown: Direction.down,
-    LogicalKeyboardKey.keyS: Direction.down,
-    LogicalKeyboardKey.arrowLeft: Direction.left,
-    LogicalKeyboardKey.keyA: Direction.left,
-    LogicalKeyboardKey.arrowRight: Direction.right,
-    LogicalKeyboardKey.keyD: Direction.right,
-  };
-
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    final game = context.read<GameProvider>();
-    final dir = _moveKeys[event.logicalKey];
-
-    if (event is KeyUpEvent) {
-      if (dir == null) return KeyEventResult.ignored;
-      game.stopMoving(dir);
-      return KeyEventResult.handled;
-    }
-
-    // 按住期间由游戏循环按帧推进，系统按键重复事件直接吞掉
-    if (event is KeyRepeatEvent) {
-      return dir == null ? KeyEventResult.ignored : KeyEventResult.handled;
-    }
-
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-
-    if (dir != null) {
-      game.startMoving(dir);
-      return KeyEventResult.handled;
-    }
-
-    final s = game.state;
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.space:
-        game.playerShoot();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyP:
-        if (s.status == GameStatus.playing) {
-          game.pauseGame();
-        } else if (s.status == GameStatus.paused) {
-          game.resumeGame();
-        }
-        return KeyEventResult.handled;
-      default:
-        return KeyEventResult.ignored;
+  void _focusGame() {
+    if (!_focusNode.hasFocus) {
+      _focusNode.requestFocus();
     }
   }
 
@@ -127,90 +88,61 @@ class _GamePageState extends State<GamePage> {
   Widget build(BuildContext context) {
     final game = context.watch<GameProvider>();
     final s = game.state;
-    final size = MediaQuery.sizeOf(context);
+    final flame = _flame;
 
-    return Focus(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: _handleKeyEvent,
-      // 失焦（切窗口、点到按钮）时清空按住的方向，避免坦克自走
-      onFocusChange: (hasFocus) {
-        if (!hasFocus) game.stopAllMoving();
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        // 顶部导航栏与信息栏会占用上下方向的画布空间，改为
-        // 由 GameHUD 悬挂在两侧上方，画布铺满全屏
-        body: Stack(
-          children: [
-            // 点击画布射击由 Flame 的 TapCallbacks 处理，并夺回键盘焦点
-            Positioned.fill(
-              child: _flame == null
-                  ? const SizedBox.expand()
-                  : GameWidget<TankGame>(game: _flame!),
-            ),
-            // 左下区域为动态摇杆触控区：手指按下处即底座中心；
-            // 射击按钮独立固定在右下角
-            if (_isMobile) ...[
-              Align(
-                alignment: Alignment.bottomLeft,
-                child: SizedBox(
-                  width: size.width * 0.5,
-                  height: size.height * 0.55,
-                  child: VirtualJoystick(
-                    onMoveStart: (dir) => game.startMoving(dir),
-                    onMoveEnd: (dir) => game.stopMoving(dir),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: flame == null
+                ? const SizedBox.expand()
+                : GameWidget<TankGame>(
+                    game: flame,
+                    focusNode: _focusNode,
+                    overlayBuilderMap: {
+                      TankGame.pauseOverlayId: (context, _) => TankPauseOverlay(
+                            onResume: () {
+                              game.resumeGame();
+                              _focusGame();
+                            },
+                          ),
+                      TankGame.gameOverOverlayId: (context, _) =>
+                          TankResultOverlay(
+                            title: '游戏结束',
+                            subtitle: '得分: ${game.state.score}',
+                            actionLabel: '返回',
+                            onAction: () => Navigator.pop(context),
+                          ),
+                      TankGame.levelCompleteOverlayId: (context, _) =>
+                          TankResultOverlay(
+                            title: '第 ${game.state.level} 关通过!',
+                            subtitle: '得分: ${game.state.score}',
+                            actionLabel: '下一关',
+                            onAction: game.nextLevel,
+                          ),
+                      TankGame.victoryOverlayId: (context, _) => TankResultOverlay(
+                            title: '恭喜通关!',
+                            subtitle: '最终得分: ${game.state.score}',
+                            actionLabel: '返回',
+                            onAction: () => Navigator.pop(context),
+                          ),
+                    },
                   ),
-                ),
-              ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ShootButton(onShoot: () => game.playerShoot()),
-                ),
-              ),
-            ],
-            if (s.status == GameStatus.paused)
-              GameOverlay(
-                title: '游戏暂停',
-                subtitle: '按 P 键或点击继续',
-                onTap: () => game.resumeGame(),
-              ),
-            if (s.status == GameStatus.gameOver)
-              GameOverlay(
-                title: '游戏结束',
-                subtitle: '得分: ${s.score}',
-                onTap: () => Navigator.pop(context),
-              ),
-            if (s.status == GameStatus.levelComplete)
-              GameOverlay(
-                title: '第 ${s.level} 关通过!',
-                subtitle: '得分: ${s.score}',
-                onTap: () => game.nextLevel(),
-              ),
-            if (s.status == GameStatus.victory)
-              GameOverlay(
-                title: '恭喜通关!',
-                subtitle: '最终得分: ${s.score}',
-                onTap: () => Navigator.pop(context),
-              ),
-            GameHUD(
-              state: s,
-              highScore: game.highScore,
-              leading: _circleNavButton(
-                Icons.arrow_back,
-                () => _confirmExit(game),
-              ),
-              trailing: _circleNavButton(
-                s.status == GameStatus.paused
-                    ? Icons.play_arrow
-                    : Icons.pause,
-                () => _togglePause(game),
-              ),
+          ),
+          GameHUD(
+            state: s,
+            highScore: game.highScore,
+            leading: _circleNavButton(
+              Icons.arrow_back,
+              () => _confirmExit(game),
             ),
-          ],
-        ),
+            trailing: _circleNavButton(
+              s.status == GameStatus.paused ? Icons.play_arrow : Icons.pause,
+              () => _togglePause(game),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -227,6 +159,7 @@ class _GamePageState extends State<GamePage> {
             onPressed: () {
               Navigator.pop(ctx);
               game.resumeGame();
+              _focusGame();
             },
             child: const Text('继续游戏'),
           ),
@@ -248,6 +181,7 @@ class _GamePageState extends State<GamePage> {
       game.pauseGame();
     } else if (status == GameStatus.paused) {
       game.resumeGame();
+      _focusGame();
     }
   }
 
