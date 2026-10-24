@@ -73,8 +73,8 @@ class EffectLayerComponent extends PositionComponent {
     super.update(dt);
     for (final spark in _sparks) {
       spark.life -= dt;
-      spark.position += spark.velocity * dt;
-      spark.velocity *= math.pow(0.08, dt).toDouble();
+      spark.position.addScaled(spark.velocity, dt);
+      spark.velocity.scale(math.pow(0.08, dt).toDouble());
     }
     _sparks.removeWhere((spark) => spark.life <= 0);
 
