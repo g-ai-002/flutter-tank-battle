@@ -298,5 +298,17 @@ void main() {
       engine.update(0.016);
       expect(engine.state.status, GameStatus.victory);
     });
+
+    test('地形变更时 revision 递增，越界写入不递增', () {
+      engine.initLevel(1);
+      final map = engine.state.map;
+      final before = map.revision;
+
+      map.setTile(2, 2, TileType.empty);
+      expect(map.revision, before + 1);
+
+      map.setTile(-1, 0, TileType.empty);
+      expect(map.revision, before + 1);
+    });
   });
 }

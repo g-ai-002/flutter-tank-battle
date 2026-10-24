@@ -5,6 +5,9 @@ class GameMap {
   final int rows;
   final List<List<TileType>> tiles;
 
+  /// 地形变更计数：砖墙被击毁等原地修改时递增，供渲染层判断是否需要重建缓存。
+  int revision = 0;
+
   GameMap({required this.cols, required this.rows})
       : tiles = List.generate(rows, (_) => List.filled(cols, TileType.empty));
 
@@ -16,6 +19,7 @@ class GameMap {
   void setTile(int col, int row, TileType type) {
     if (col >= 0 && col < cols && row >= 0 && row < rows) {
       tiles[row][col] = type;
+      revision++;
     }
   }
 
