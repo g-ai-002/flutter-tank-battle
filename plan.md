@@ -1,7 +1,7 @@
 # 坦克大战 — 项目规划
 
 ## 长期目标
-- 跨 Android + Windows 双平台的经典坦克大战游戏
+- 跨 Android + Windows + Web 三平台的经典坦克大战游戏
 - 精美克制的界面，操作与主流游戏一致
 - 持续可演进：每个版本可独立交付，可观测、可回滚
 
@@ -21,20 +21,21 @@
 
 ## 版本历史
 
-### 未发布 · Web 平台与运行时优化（2026-10-27）
-- **状态**: 开发中 🚧
-- **目标**: 支持 Web 平台在线试玩，并收窄暂停与页面重建开销
+### v0.5.0 (MINOR)
+
+- **状态**: 已发布 ✅
+- **目标**: 支持 Web 平台并新增 GitHub Pages 多版本在线试玩
 - **任务**:
-  - [x] 日志/文件系统/窗口初始化拆条件导入，`lib` 下除 `*_io.dart` 外
-    不再直接 import `dart:io`
-  - [x] 新增 `logging_init`、`window_setup`、`platform_info`、`game_hints`
-  - [x] GitHub Actions 增加 `build-web`：tag 发 `v<版本号>/`、其他触发发
-    `debug/`，写 gh-pages 并生成版本索引与 `versions.json`
-  - [x] Gitea Actions 增加 `build-web`，仅产出并附加 `-web.zip`
-  - [x] 暂停/结算/通关时 `pauseEngine()`，恢复游玩时 `resumeEngine()`
-  - [x] 游戏页 HUD 独立订阅 + `RepaintBoundary`，避免 GameWidget 随 HUD 重建
-  - [x] Web 端日志内存缓冲，设置页隐藏“打开目录”
-  - [x] 更新 README（Web 平台 / 在线试玩 / Web 构建说明）
+  - [x] Web 平台条件导入：日志、文件系统、窗口初始化拆分 `_io` / `_web`
+  - [x] Web 端日志回退到内存，设置页仍可查看
+  - [x] 静态网格/地形烘焙为 `ui.Picture`
+  - [x] 暂停/结算时暂停 Flame 主循环，恢复时重启
+  - [x] 平台自适应操作提示
+  - [x] 游戏页 HUD 独立订阅 + `RepaintBoundary`
+  - [x] GitHub Pages 多版本站点与 Gitea Web ZIP 产物
+  - [x] 战场地形继续复用已有 `ui.Picture` + revision 缓存
+  - [x] 版本号 0.4.1 → 0.5.0
+  - [x] 更新 README/plan/versions
 
 ### v0.4.1 (PATCH)
 - **状态**: 已发布 ✅

@@ -2,7 +2,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = '坦克大战';
-  static const String version = '0.4.1';
+  static const String version = '0.5.0';
 
   // 游戏地图尺寸（格子数）
   static const int mapCols = 26;
