@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +7,8 @@ import '../services/audio_service.dart';
 import '../services/file_system_service.dart';
 import '../services/log_service.dart';
 import '../utils/constants.dart';
+import '../utils/game_hints.dart';
+import '../utils/platform_info.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -37,17 +37,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadDirs() async {
     try {
-      final logRoot = await FileSystemService.instance.getLogRoot();
+      // Web 端没有本地目录，返回空串后日志目录卡片自动隐藏。
+      final logRoot = await FileSystemService.instance.getLogRootPath();
       if (mounted) {
-        setState(() => _logDir = logRoot.path);
+        setState(() => _logDir = logRoot);
       }
     } catch (e, stack) {
       LogService.error('读取日志目录失败', e, stack);
     }
   }
 
-  bool get _canOpenDir =>
-      Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  /// 浏览器无法打开系统文件管理器，仅桌面端展示入口。
+  bool get _canOpenDir => isDesktopPlatform;
 
   @override
   Widget build(BuildContext context) {
@@ -94,12 +95,40 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const Divider(),
 
+          // 操作：按桌面/触屏给出对应提示
+          const _SectionHeader(title: '操作'),
+          ListTile(
+            leading: Icon(Icons.open_with, color: theme.colorScheme.primary),
+            title: const Text('移动'),
+            subtitle: Text(GameHints.movement),
+          ),
+          ListTile(
+            leading: Icon(Icons.gps_fixed, color: theme.colorScheme.primary),
+            title: const Text('射击'),
+            subtitle: Text(GameHints.shoot),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.pause_circle_outline,
+              color: theme.colorScheme.primary,
+            ),
+            title: const Text('暂停'),
+            subtitle: Text(GameHints.pause),
+          ),
+
+          const Divider(),
+
           // 关于
           const _SectionHeader(title: '关于'),
           ListTile(
             leading: Icon(Icons.info_outline, color: theme.colorScheme.primary),
             title: const Text('版本'),
             subtitle: const Text(AppConstants.version),
+          ),
+          ListTile(
+            leading: Icon(Icons.devices, color: theme.colorScheme.primary),
+            title: const Text('运行平台'),
+            subtitle: Text(platformLabel),
           ),
           // 日志目录
           if (_logDir.isNotEmpty)
@@ -116,7 +145,9 @@ class _SettingsPageState extends State<SettingsPage> {
               color: theme.colorScheme.primary,
             ),
             title: const Text('查看日志'),
-            subtitle: const Text('查看应用运行日志'),
+            subtitle: Text(
+              isWebPlatform ? '查看浏览器内存中的运行日志' : '查看应用运行日志',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showLogDialog(context),
           ),
@@ -175,7 +206,8 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: Icon(Icons.open_in_new, color: theme.colorScheme.primary),
               tooltip: '打开目录',
               onPressed: () async {
-                final ok = await FileSystemService.instance.openDirectory(path);
+                final ok =
+                    await FileSystemService.instance.openDirectory(path);
                 if (!ok && mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('当前平台不支持打开目录')),

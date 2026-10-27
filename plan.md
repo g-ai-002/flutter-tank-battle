@@ -10,6 +10,7 @@
 - [x] 多关卡地图系统
 - [x] 道具系统（加速、护盾、火力增强）
 - [x] 音效与背景音乐
+- [x] Web 平台在线试玩（GitHub Pages 多版本）
 - [ ] 排行榜与成就系统
 - [ ] 自适应布局（折叠屏/平板/桌面）
 
@@ -19,6 +20,21 @@
 ---
 
 ## 版本历史
+
+### 未发布 · Web 平台与运行时优化（2026-10-27）
+- **状态**: 开发中 🚧
+- **目标**: 支持 Web 平台在线试玩，并收窄暂停与页面重建开销
+- **任务**:
+  - [x] 日志/文件系统/窗口初始化拆条件导入，`lib` 下除 `*_io.dart` 外
+    不再直接 import `dart:io`
+  - [x] 新增 `logging_init`、`window_setup`、`platform_info`、`game_hints`
+  - [x] GitHub Actions 增加 `build-web`：tag 发 `v<版本号>/`、其他触发发
+    `debug/`，写 gh-pages 并生成版本索引与 `versions.json`
+  - [x] Gitea Actions 增加 `build-web`，仅产出并附加 `-web.zip`
+  - [x] 暂停/结算/通关时 `pauseEngine()`，恢复游玩时 `resumeEngine()`
+  - [x] 游戏页 HUD 独立订阅 + `RepaintBoundary`，避免 GameWidget 随 HUD 重建
+  - [x] Web 端日志内存缓冲，设置页隐藏“打开目录”
+  - [x] 更新 README（Web 平台 / 在线试玩 / Web 构建说明）
 
 ### v0.4.1 (PATCH)
 - **状态**: 已发布 ✅

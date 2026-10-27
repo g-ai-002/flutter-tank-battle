@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 
 /// 暂停浮层。
 class TankPauseOverlay extends StatelessWidget {
-  const TankPauseOverlay({super.key, required this.onResume});
+  const TankPauseOverlay({
+    super.key,
+    required this.onResume,
+    this.hint = '按 P 键或点击继续',
+  });
 
   final VoidCallback onResume;
+
+  /// 平台自适应的继续提示，由调用方按桌面/触屏传入。
+  final String hint;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +28,7 @@ class TankPauseOverlay extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text('按 P 键或点击继续'),
+              Text(hint),
               const SizedBox(height: 16),
               ElevatedButton(onPressed: onResume, child: const Text('继续游戏')),
             ],

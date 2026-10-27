@@ -1,18 +1,19 @@
-import 'dart:io';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../game/overlays/tank_overlays.dart';
 import '../game/tank_game.dart';
 import '../models/game_enums.dart';
 import '../providers/game_provider.dart';
+import '../utils/game_hints.dart';
+import '../utils/platform_info.dart';
 import '../widgets/game_hud.dart';
 
-/// 桌面端用键盘操控；移动端左下摇杆与右下射击按钮由 Flame 绘制。
+/// 桌面端用键盘操控；移动端与浏览器由 Flame 绘制摇杆与射击按钮。
 /// 游玩页锁定横屏并进入沉浸全屏，菜单页仍跟随系统方向。
-bool get _isMobile =>
-    !Platform.isWindows && !Platform.isMacOS && !Platform.isLinux;
+bool get _isMobile => !isDesktopPlatform;
 
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
@@ -86,8 +87,7 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    final game = context.watch<GameProvider>();
-    final s = game.state;
+    final game = _game;
     final flame = _flame;
 
     return Scaffold(
@@ -95,13 +95,14 @@ class _GamePageState extends State<GamePage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: flame == null
+            child: game == null || flame == null
                 ? const SizedBox.expand()
                 : GameWidget<TankGame>(
                     game: flame,
                     focusNode: _focusNode,
                     overlayBuilderMap: {
                       TankGame.pauseOverlayId: (context, _) => TankPauseOverlay(
+                            hint: GameHints.resume,
                             onResume: () {
                               game.resumeGame();
                               _focusGame();
@@ -130,16 +131,22 @@ class _GamePageState extends State<GamePage> {
                     },
                   ),
           ),
-          GameHUD(
-            state: s,
-            highScore: game.highScore,
-            leading: _circleNavButton(
-              Icons.arrow_back,
-              () => _confirmExit(game),
-            ),
-            trailing: _circleNavButton(
-              s.status == GameStatus.paused ? Icons.play_arrow : Icons.pause,
-              () => _togglePause(game),
+          // HUD 单独订阅 provider：约 10Hz 的分数刷新只重建这一层，
+          // 不再牵动 GameWidget 与整页重建。
+          Consumer<GameProvider>(
+            builder: (context, game, _) => GameHUD(
+              state: game.state,
+              highScore: game.highScore,
+              leading: _circleNavButton(
+                Icons.arrow_back,
+                () => _confirmExit(game),
+              ),
+              trailing: _circleNavButton(
+                game.state.status == GameStatus.paused
+                    ? Icons.play_arrow
+                    : Icons.pause,
+                () => _togglePause(game),
+              ),
             ),
           ),
         ],

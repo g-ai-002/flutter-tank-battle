@@ -73,12 +73,16 @@ class TankGame extends FlameGame<TankWorld> with KeyboardEvents {
   double _shakeDuration = 0;
   double _shakeStrength = 0;
 
+  /// 规则层暂停/结算时同步停掉 Flame 主循环，避免暂停期间空转。
+  bool _enginePaused = false;
+
   @override
   Color backgroundColor() => Colors.black;
 
   @override
   Future<void> onLoad() async {
     _cameraBase = Vector2(worldSize / 2, worldSize / 2);
+    provider.addListener(_syncEnginePause);
     _effects = EffectLayerComponent(priority: 5);
     await world.addAll([
       BattlefieldComponent(provider: provider, priority: 0),
@@ -156,6 +160,8 @@ class TankGame extends FlameGame<TankWorld> with KeyboardEvents {
 
   @override
   void update(double dt) {
+    // 暂停/结算期间规则不再推进（引擎自身也已被 pauseEngine 停掉）。
+    if (_enginePaused) return;
     final before = _Snapshot.of(provider.state);
     provider.advance(dt);
     final after = provider.state;
@@ -185,6 +191,7 @@ class TankGame extends FlameGame<TankWorld> with KeyboardEvents {
     }
 
     _syncOverlays(after.status);
+    _syncEnginePause(after.status);
     _updateCamera(dt);
     super.update(dt);
   }
@@ -204,6 +211,35 @@ class TankGame extends FlameGame<TankWorld> with KeyboardEvents {
       overlays.remove(id);
       _activeOverlays.remove(id);
     }
+  }
+
+  /// 暂停/结算浮层出现后停掉主循环，恢复游玩时再拉起来。
+  ///
+  /// 浮层展示依赖 provider 通知，因此恢复不能只靠 update：
+  /// 这里同时挂在 provider 的监听上，resumeGame/nextLevel 会直接唤醒引擎。
+  void _syncEnginePause([GameStatus? status]) {
+    final current = status ?? provider.state.status;
+    final shouldPause = switch (current) {
+      GameStatus.paused => _activeOverlays.contains(pauseOverlayId),
+      GameStatus.gameOver => _activeOverlays.contains(gameOverOverlayId),
+      GameStatus.levelComplete =>
+        _activeOverlays.contains(levelCompleteOverlayId),
+      GameStatus.victory => _activeOverlays.contains(victoryOverlayId),
+      _ => false,
+    };
+    if (shouldPause == _enginePaused) return;
+    _enginePaused = shouldPause;
+    if (shouldPause) {
+      pauseEngine();
+    } else {
+      resumeEngine();
+    }
+  }
+
+  @override
+  void onDetach() {
+    provider.removeListener(_syncEnginePause);
+    super.onDetach();
   }
 
   void _shake(double duration, double strength) {
