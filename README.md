@@ -44,18 +44,14 @@
 
 ## 版本历史
 
-### 未发布 (2026-10-27)
-- 新增 Web 平台：日志/文件系统/窗口初始化改为条件导入，
-  `lib` 下除 `*_io.dart` 外不再直接依赖 `dart:io`
-- GitHub Pages 多版本在线试玩：tag 发布到 `v<版本号>/`，
-  其他触发发布到 `debug/`
-- Gitea Actions 增加 Web 构建，仅产出并附加 `-web.zip`
-- 暂停/结算/通关时暂停 Flame 主循环，`resumeGame`/`nextLevel` 时
-  由 provider 唤醒
-- 游戏页 HUD 独立订阅并加 `RepaintBoundary`，避免整页与 GameWidget
-  随 HUD 重建
-- Web 端日志降级为内存缓冲，设置页隐藏“打开目录”但仍可查看日志
-- 桌面/触屏操作提示集中到 `GameHints`
+### v0.5.0 (2026-10-27)
+
+- 支持 Web 平台与 GitHub Pages 多版本在线试玩
+- 日志、文件系统、窗口初始化改为条件导入，Web 端保留内存日志
+- 静态网格/地形烘焙为 `ui.Picture`，暂停/结算时停掉 Flame 主循环
+- 操作提示按桌面、触屏与浏览器自适应
+- 游戏页 HUD 独立订阅并加 `RepaintBoundary`，避免 GameWidget 随 HUD 重建
+- 版本号 0.4.1 → 0.5.0
 
 ### v0.4.1 (2026-10-24)
 - 战场地形录制为 `ui.Picture` 缓存，逐帧只回放绘制指令
