@@ -135,8 +135,8 @@
 - **包体克制**：当前依赖均为成熟稳定的纯 Dart / Flutter 插件，避免引入大型原生 SDK。
 
 ## 依赖与版本基线
-- Flutter: 3.47.7
-- Dart: 3.13.5
+- Flutter: 3.47.8
+- Dart: 3.13.7
 - flame: 1.38.2
 - provider: 6.1.5+1
 - window_manager: 0.5.2

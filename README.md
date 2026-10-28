@@ -122,7 +122,7 @@ tag 触发的构建发布到 `v<版本号>/`，其他触发发布到 `debug/`，
 
 ## 技术栈
 
-- Flutter 3.47.7
+- Flutter 3.47.8
 - Provider 状态管理
 - Material 3 设计系统
 - Flame 1.38.2 游戏引擎（组件化渲染 + 主循环）
