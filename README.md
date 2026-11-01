@@ -20,7 +20,7 @@
 
 浏览器打开即可开战，无需安装：
 
-- 🎮 版本索引页（最新正式版本 + 全部历史版本）：
+- 🎮 版本索引页（最新正式版本 + 最近 3 个 MINOR 版本）：
   <https://g-ai-002.github.io/flutter-tank-battle/>
 - 🧪 调试预览：<https://g-ai-002.github.io/flutter-tank-battle/debug/>
 
@@ -117,7 +117,9 @@ flutter build web --release
 
 Web 站点由 GitHub Actions 的 `build-web` job 发布到 `gh-pages` 分支：
 tag 触发的构建发布到 `v<版本号>/`，其他触发发布到 `debug/`，
-根目录会自动生成版本索引页与 `versions.json`。`web/` 目录不入库，
+根目录会自动生成版本索引页与 `versions.json`；站点只保留最近 3 个 MINOR 版本
+（每个 MINOR 取最新一次发布），`gh-pages` 每次发布都压缩成一次提交。
+`web/` 目录不入库，
 由流水线用 `flutter create --platforms=web` 生成后再构建。
 
 ## 技术栈
